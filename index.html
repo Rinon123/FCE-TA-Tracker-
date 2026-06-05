@@ -3,10 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FCE TA Tracker — SC Digital Team</title>
+<meta name="theme-color" content="#0a1a33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SC Digital Team">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%232f7fed'/%3E%3Ctext x='90' y='118' font-family='Arial' font-size='80' font-weight='bold' fill='white' text-anchor='middle'%3ESC%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22SC%20Digital%20Team%22%2C%22short_name%22%3A%22SC%20Team%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a1a33%22%2C%22theme_color%22%3A%22%230a1a33%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527%2520viewBox%253D%25270%25200%2520192%2520192%2527%253E%253Crect%2520width%253D%2527192%2527%2520height%253D%2527192%2527%2520rx%253D%252742%2527%2520fill%253D%2527%25232f7fed%2527%2F%253E%253Ctext%2520x%253D%252796%2527%2520y%253D%2527126%2527%2520font-family%253D%2527Arial%2527%2520font-size%253D%252785%2527%2520font-weight%253D%2527bold%2527%2520fill%253D%2527white%2527%2520text-anchor%253D%2527middle%2527%253ESC%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+<title>SC Digital Team — Coats BD</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0f0f13;--surface:#16161d;--surface2:#1e1e28;--border:#2a2a38;--text:#e8e8f0;--muted:#7a7a92;--dim:#3a3a50;--accent:#7c6af5;--accent2:#4ecdc4;--amber:#f5a623;--red:#e05252;--green:#52c87a;--pink:#e57eb3;--blue:#5baadc;--orange:#f09f56;--radius:10px;}
+:root{--bg:#0a1a33;--surface:#0f2444;--surface2:#16315a;--border:#244372;--text:#eaf1fb;--muted:#8aa2c4;--dim:#3a557f;--accent:#2f7fed;--accent2:#37c2d6;--amber:#f5a623;--red:#e05252;--green:#52c87a;--pink:#e57eb3;--blue:#5baadc;--orange:#f09f56;--radius:10px;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5;}
 .app{display:flex;min-height:100vh;}
@@ -14,6 +21,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:400px;padding:32px;}
 .login-logo{text-align:center;margin-bottom:24px;}
+.sc-badge{width:64px;height:64px;border-radius:16px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-weight:600;font-size:26px;color:#fff;background:linear-gradient(135deg,#2f7fed,#37c2d6);box-shadow:0 6px 20px rgba(47,127,237,.4);letter-spacing:.5px;}
+.sc-badge-sm{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;color:#fff;background:linear-gradient(135deg,#2f7fed,#37c2d6);flex-shrink:0;letter-spacing:.3px;}
+.logo-row{display:flex;align-items:center;gap:11px;}
 .login-logo .lt{font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;font-family:'DM Mono',monospace;}
 .login-logo .ln{font-size:22px;font-weight:600;margin-top:4px;}
 .login-logo .ls{font-size:12px;color:var(--muted);margin-top:2px;}
@@ -189,7 +199,7 @@ select.form-input option{background:var(--surface2);}
 <!-- LOGIN -->
 <div class="login-screen" id="login-screen">
   <div class="login-card">
-    <div class="login-logo"><div class="lt">Coats BD</div><div class="ln">FCE TA Tracker</div><div class="ls">Sign in to continue</div></div>
+    <div class="login-logo"><div class="sc-badge">SC</div><div class="lt">Coats BD</div><div class="ln">SC Digital Team</div><div class="ls">Sign in to continue</div></div>
     <div class="conn-banner hidden" id="conn-banner"></div>
     <div class="login-field"><label>User ID</label><input type="text" id="login-id" placeholder="Your user ID" autocomplete="off"/></div>
     <div class="login-field"><label>Password</label><input type="password" id="login-pw" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
@@ -203,7 +213,7 @@ select.form-input option{background:var(--surface2);}
 
 <div class="app hidden" id="app">
 <aside class="sidebar">
-  <div class="logo"><div class="logo-tag">Coats BD</div><div class="logo-title">FCE TA Tracker</div><div class="logo-sub" id="sidebar-month-label">—</div></div>
+  <div class="logo"><div class="logo-row"><div class="sc-badge-sm">SC</div><div><div class="logo-tag">Coats BD</div><div class="logo-title">SC Digital Team</div></div></div><div class="logo-sub" style="margin-top:6px;color:var(--accent2);font-weight:500;">FCE TA Tracker</div><div class="logo-sub" id="sidebar-date-label" style="margin-top:1px;"></div></div>
   <nav class="nav" id="nav-menu"></nav>
   <div class="sidebar-footer">
     <div class="role-pill"><div class="rl">Signed in</div><div class="rv" id="current-user-label">—</div><div class="rr" id="current-role-label">—</div></div>
@@ -535,7 +545,7 @@ function monthLabel(m){ return new Date(m+'-01').toLocaleDateString('en-US',{mon
 function populateMonthFilters(){
   const months=getAvailableMonths();
   document.getElementById('month-filter-top').innerHTML='<option value="all">All months</option>'+months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
-  document.getElementById('sidebar-month-label').textContent=months.length?monthLabel(months[0]):'—';
+  document.getElementById('sidebar-date-label').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   document.getElementById('month-bar-log').innerHTML='<button class="month-chip active" onclick="setLogMonth(\'all\',this)">All</button>'+months.map(m=>`<button class="month-chip" onclick="setLogMonth('${m}',this)">${monthLabel(m)}</button>`).join('');
   document.getElementById('month-bar-charts').innerHTML='<button class="month-chip active" onclick="setChartsMonth(\'all\',this)">All</button>'+months.map(m=>`<button class="month-chip" onclick="setChartsMonth('${m}',this)">${monthLabel(m)}</button>`).join('');
 }
