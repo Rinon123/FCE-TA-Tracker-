@@ -459,38 +459,17 @@ async function doLogin(){
   if(!id||!pw){ err.textContent='Enter your user ID and password.'; return; }
   btn.disabled=true; status.innerHTML='<span class="loader"></span> Checking…';
   try{
-    try {
-  const { data, error } = await sb
-    .from('app_users')
-    .select('*')
-    .eq('id', userId.trim())
-    .maybeSingle();
-
-  status.textContent = "";
-  btn.disabled = false;
-
-  if (error || !data) {
-    err.textContent = 'Invalid user ID or password.';
-    return;
-  }
-
-  if (data.password !== pw.trim()) {
-    err.textContent = 'Invalid user ID or password.';
-    return;
-  }
-
-  currentUser = data;
-  sessionStorage.setItem('fce_session', JSON.stringify({ id: data.id }));
-
-  document.getElementById('login-pw').value = "";
-  document.getElementById('login-screen').classList.add('hidden');
-
-  await bootApp();
-
-} catch (e) {
-  btn.disabled = false;
-  status.textContent = "";
-  err.textContent = "Connection error: " + e.message;
+    const {data,error}=await sb.from('app_users').select('*').eq('id',id).single();
+    status.textContent='';
+    btn.disabled=false;
+    if(error||!data){ err.textContent='Invalid user ID or password.'; return; }
+    if(data.password!==pw){ err.textContent='Invalid user ID or password.'; return; }
+    currentUser=data;
+    sessionStorage.setItem('fce_session',JSON.stringify({id:data.id}));
+    document.getElementById('login-pw').value='';
+    document.getElementById('login-screen').classList.add('hidden');
+    await bootApp();
+  }catch(e){ btn.disabled=false; status.textContent=''; err.textContent='Connection error: '+e.message; }
 }
 function doLogout(){ currentUser=null; sessionStorage.removeItem('fce_session'); document.getElementById('app').classList.add('hidden'); document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('login-id').value=''; document.getElementById('login-id').focus(); }
 async function tryRestoreSession(){
@@ -927,4 +906,3 @@ window.addEventListener('DOMContentLoaded',async()=>{
 </script>
 </body>
 </html>
-
