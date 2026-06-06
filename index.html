@@ -210,6 +210,7 @@ select.form-input option{background:var(--surface2);}
     <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-err" id="login-err"></div>
     <div class="login-status" id="login-status"></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);text-align:center;line-height:1.6;">Forgot your password?<br>Contact your Super Admin to reset it.</div>
   </div>
 </div>
 
@@ -334,6 +335,7 @@ select.form-input option{background:var(--surface2);}
         <div class="card"><div class="card-header"><div class="card-title">Customer List (<span id="cust-count">0</span>)</div></div><div style="padding:14px;"><input class="form-input" type="text" id="master-cust-search" placeholder="Search customers…" oninput="renderMasterData()" style="margin-bottom:10px;"/><div class="master-list" id="master-customer-list"></div><div class="add-item-row"><input class="form-input" type="text" id="new-customer-input" placeholder="New customer name…"/><button class="btn btn-primary btn-sm" onclick="addMasterItem('customer')">Add</button></div></div></div>
         <div class="card"><div class="card-header"><div class="card-title">Visit Purpose Dropdown</div></div><div style="padding:14px;"><div class="master-list" id="master-purpose-list"></div><div class="add-item-row"><input class="form-input" type="text" id="new-purpose-input" placeholder="New purpose option…"/><button class="btn btn-primary btn-sm" onclick="addMasterItem('purpose')">Add</button></div></div></div>
         <div class="card"><div class="card-header"><div class="card-title">Rejection / Failure Reasons</div></div><div style="padding:14px;"><div class="master-list" id="master-reason-list"></div><div class="add-item-row"><input class="form-input" type="text" id="new-reason-input" placeholder="New rejection reason…"/><button class="btn btn-primary btn-sm" onclick="addMasterItem('reason')">Add</button></div></div></div>
+        <div class="card"><div class="card-header"><div class="card-title">Buyer List (Order Tracker)</div></div><div style="padding:14px;"><div class="master-list" id="master-buyer-list"></div><div class="add-item-row"><input class="form-input" type="text" id="new-buyer-input" placeholder="New buyer name…"/><button class="btn btn-primary btn-sm" onclick="addMasterItem('buyer')">Add</button></div></div></div>
       </div>
     </div>
 
@@ -356,9 +358,19 @@ select.form-input option{background:var(--surface2);}
       </div>
     </div>
 
-  </div>
-</div>
-</div>
+    <!-- ORDER TRACKER -->
+    <div class="page" id="page-orders">
+      <div class="detail-meta">
+        <div class="month-bar" id="order-status-bar"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select class="filter-sel" id="order-task-filter" onchange="renderOrders()"><option value="">All tasks</option><option>Swatch Collection</option><option>Sample Delivery</option></select>
+          <span class="count-badge" id="order-count">—</span>
+          <button class="btn btn-ghost btn-sm" onclick="downloadOrders()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download CSV</button>
+          <button class="btn btn-primary btn-sm" onclick="openOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>New Order</button>
+        </div>
+      </div>
+      <div class="card" style="overflow:auto;"><table><thead><tr><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Req. Time / Delivered</th><th>Status</th><th>Note</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
+    </div>
 
 <div class="modal-overlay" id="approve-modal"><div class="modal">
   <div class="modal-header"><h3 id="approve-modal-title">Review Entry</h3><button class="btn-icon" onclick="closeModal('approve-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -381,6 +393,28 @@ select.form-input option{background:var(--surface2);}
     <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-input" id="e-notes" style="min-height:52px;"></textarea></div>
   </div></div>
   <div class="modal-footer"><button class="btn btn-reject" style="margin-right:auto;" onclick="deleteEntryFromEdit()">Delete</button><button class="btn btn-ghost" onclick="closeModal('edit-modal')">Cancel</button><button class="btn btn-primary" onclick="saveEdit()">Save Changes</button></div>
+</div></div>
+
+<div class="modal-overlay" id="order-modal"><div class="modal">
+  <div class="modal-header"><h3 id="order-modal-title">New Order</h3><button class="btn-icon" onclick="closeModal('order-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="o-date"/></div>
+    <div class="form-group"><label class="form-label">Order No</label><input class="form-input" type="text" id="o-orderno" placeholder="e.g. PS40294323"/></div>
+    <div class="form-group"><label class="form-label">Task Type *</label><select class="form-input" id="o-task" onchange="onTaskChange()"><option value="">Select…</option><option>Swatch Collection</option><option>Sample Delivery</option></select></div>
+    <div class="form-group"><label class="form-label">Service By *</label><select class="form-input" id="o-service"><option value="">Select task first…</option></select></div>
+    <div class="form-group"><label class="form-label">Customer Name <span style="text-transform:none;color:var(--dim);">(type to search)</span></label><div class="combo"><input class="form-input" type="text" id="o-customer" placeholder="Type customer…" autocomplete="off" oninput="oComboFilter('customer',this.value)" onfocus="oComboFilter('customer',this.value)"/><div class="combo-list" id="o-customer-list"></div></div></div>
+    <div class="form-group"><label class="form-label">Buyer Name <span style="text-transform:none;color:var(--dim);">(type to search)</span></label><div class="combo"><input class="form-input" type="text" id="o-buyer" placeholder="Type buyer…" autocomplete="off" oninput="oComboFilter('buyer',this.value)" onfocus="oComboFilter('buyer',this.value)"/><div class="combo-list" id="o-buyer-list"></div></div></div>
+    <!-- Swatch-only fields -->
+    <div class="form-group o-swatch"><label class="form-label">Responsibility To</label><select class="form-input" id="o-fce"></select></div>
+    <div class="form-group o-swatch"><label class="form-label">Requested Time</label><input class="form-input" type="text" id="o-reqtime" placeholder="e.g. 10:30 AM"/></div>
+    <!-- Delivery-only fields -->
+    <div class="form-group o-delivery"><label class="form-label">Delivery Date</label><input class="form-input" type="date" id="o-delivered"/></div>
+    <div class="form-group full o-delivery"><label class="form-label">Delivery note (PDF / image)</label><input class="form-input" type="file" id="o-file" accept=".pdf,.jpg,.jpeg,.png" style="padding:7px;"/><div id="o-file-current" style="font-size:11px;color:var(--muted);margin-top:4px;"></div></div>
+    <!-- Status (both) -->
+    <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="o-status" onchange="onOrderStatusChange()"><option>Requested</option><option>Collected</option><option>In Development</option><option>Delivered</option></select></div>
+    <div class="form-group full"><label class="form-label">Remarks</label><textarea class="form-input" id="o-remarks" style="min-height:48px;"></textarea></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn btn-reject" style="margin-right:auto;display:none;" id="o-delete-btn" onclick="deleteOrder()">Delete</button><button class="btn btn-ghost" onclick="closeModal('order-modal')">Cancel</button><button class="btn btn-primary" id="o-save-btn" onclick="saveOrder()">Save Order</button></div>
 </div></div>
 
 <div class="toast" id="toast"></div>
@@ -407,13 +441,21 @@ const CUSTOMER_MASTER = [["102996", "REGENCY GARMENTS LTD."], ["102997", "UNIVOG
 const DEFAULT_FCE_LIST = ['Sabbir','Rasel','Torikul','Akram','Mehedi','Amirul 2','Shajib','Amirul 1','Biplob'];
 const DEFAULT_PURPOSES = ['Colour Matching','Swatch Collection','Urgent Sample Delivery','Complaint Cone Collection','Training of the ShopCoats System','Light box shade matching','Bulk order discussion','DTM handover to lab','Formal meet','Rejection sample delivery & review','No-order swatch collection','Other'];
 const DEFAULT_REASONS = ['Insufficient supporting documents','Amount exceeds daily limit','Visit not pre-approved','Duplicate entry','Customer not in approved list','Date mismatch','Other'];
+const DEFAULT_BUYERS = ["American Eagle Outfitters", "Aerie (AEO)", "AE77", "Old Navy", "Banana Republic", "Gap", "Athleta", "Levi Strauss", "Dockers", "Beyond Yoga", "Heritage Brands (IZOD, Van Heusen, Arrow, Olga, Warners)", "Tommy Hilfiger (USA)", "Tommy Hilfiger (EUR)", "Calvin Klein Europe BV", "Calvin Klein", "Peerless - PVH", "Tommy Jeans", "Columbia Sportswear", "Mountain Hardwear", "Prana", "VF Outdoor- The North Face (TNF)", "VF Workwear - Williamson Dickies, Walls", "VF Active - Napapijri", "VF Outdoor - Timberland (OLD)", "VF Outdoor - Timberland", "VF Outdoor - Icebreaker", "VF Active - Vans", "VF Active - Jansport", "VF Europe & Kipling", "VF Outdoor - Smartwool", "Timberland", "Wrangler Jeanswear", "Lee, Riders Jeanswear", "Rock & Republic", "Inditex-Zara", "Inditex-Stradivarius", "Inditex-Bershka", "Inditex Group", "Inditex - Pull & Bear", "Inditex - Lefties", "Inditex-Massimo Dutti", "Inditex-Oysho", "ZARA TRF", "Zara Basics", "Zara Kids", "Zara Woman", "Zara Man", "Zara AthleticZ", "Zara SPRLS & Estudio", "INDITEX- ZARA HOME", "H & M", "H&M Portfolio Brands-COS,Monki,Wkdy,ARKT", "H&M Move", "H&M - &Other Stores", "H&M - Arket", "H&M - COS", "H&M - Monki", "H&M - Weekday", "H&M - Home", "Decathlon", "Solognac", "UNIQLO", "GU", "Comptoir des Cotonniers", "JBRAND", "Helmut Lang", "Theory (FRG)", "NEXT", "NSL - Bangladesh", "Joules", "Fat Face", "Reiss", "Lipsy London", "BONPRIX", "Ralph Lauren (Polo)", "Chaps", "Club Monaco", "Jack & Jones", "Selected", "Only", "Only and Sons", "Name It", "Vero Moda", "Noisy May", "Pieces", "Jacqueline de Yong (JDY)", "Junarose", "BEST SELLER", "Danish Fashion Group by Bestseller", "Walmart Mexico", "Walmart Japan", "Walmart Canada", "Walmart", "Speedo", "Berghaus", "Canterbury", "Endura", "M&S", "Per Una", "Dewhirst", "G-III Apparel", "Wilsons Leather", "Express & Express Men", "Bonobos", "Gemo", "TBS", "INA, FGL Sport, Mark's Wk", "Musto", "First Tactical", "Noble Outfitters", "Innov8 Partner", "Bass Pro Shop", "Cabela's", "Perry Ellis", "Callaway", "J Crew", "Madewell", "Amazon", "Amazon UK", "Hanesbrands Inc.", "Maidenform", "DBA (Dim Branded Apparel)", "Champion", "Gear for Sports", "Knights Apparel Inc", "Abercrombie & Fitch", "Hollister/Gilly Hicks", "Nautica", "Forever 21", "Aeropostale", "Brooks Brothers", "JC Penney", "Liz Claiborne", "EDDIE BAUER", "Vertx", "Flying Cross", "Lucky Brand", "Juicy Couture", "Carhartt", "Carhartt WIP", "Carter's", "Carter's Canada Inc.", "OshKosh B'gosh", "Ella Moss", "Splendid", "7 For All Mankind", "Delta Galil", "Arc'Teryx Equipment", "Armada", "Bonfire / Amer Sports Portland Design Center", "Wilson Sporting Goods", "Evoshield", "Salomon - Amer Sports", "Atomic", "Peak Performance", "Asos", "TopShop", "Miss Selfridge", "Topman", "Bonobo (Beaumanoir Group)", "Cache Cache", "Morgan", "Patrice Bréal (Beaumanoir Group)", "Scottage (Beaumanoir Group)", "Varner Group", "CUBUS", "Dressmann", "Bik Bok", "Jones New York", "Nine West Apparel", "Authentic Brands", "Billabong", "Element", "Frederick's of Hollywood", "Reebok Apparel", "Spyder", "Tap Out", "Careismatic Brands", "Cherokee Uniform", "Casual Male", "Destination XL", "Rochester Clothing", "DEBENHAMS", "BooHoo", "Alo", "Bella + Canvas", "Michael Kors (Apparel)", "Versace", "Chico's", "Soma Intimates", "White House/Black Market", "Jules (Happychic Group)", "Bizzbee", "Etam", "123 Etam", "JORDACHE", "US Polo Asn", "Gildan", "American Apparel", "Anvil Knitwear", "Al-Style (AlStyle)", "Target USA", "Universal Thread", "Mudd Jeans", "Buffalo Jeans", "Ed Hardy", "London Fog", "Marc Ecko", "Mossimo", "Rocawear", "Zoo York", "Fila (USA)", "Fila", "Saks Fifth Avenue", "Lord & Taylor", "Hudson's Bay Company", "Fristads", "Fristads Kansas Sverige AB", "Leijona", "Snickers", "Jacadi", "Okaidi", "Ann Taylor / Loft / Lou & Grey", "Lane Bryant", "TALBOTS", "AIGLE", "Lacoste (FRA)", "Quiksilver", "Volcom", "Roxy (Apparel)", "CBR-Holding Strt One", "CBR-Holding OneTouch", "CBR-Holding Cecil", "CORTEFIEL GROUP-SPRINGFIELD", "CORTEFIEL GROUP-WOMEN´SECRET", "Cortefiel", "CORTEFIEL GROUP-FIFTY FACTORY", "Workwear Group/Pacific Brands", "Yakka", "Lanier Clothing / Oxford Golf", "Lilly Pulitzer", "Tommy Bahama", "Belk", "The Limited Stores", "Peek & Cloppenburg", "Mo+C579+C604", "McNeal KG", "Sears", "Kmart", "Otto Versand Hamburg", "GYMBOREE", "THE CHILDREN'S PLACE", "Coach", "Kate Spade (Apparel)", "Bonita", "Tom Tailor", "Victoria's Secret", "VS Pink", "Warehouse One", "Silver Jeans", "Jag Jeans", "Bugatti Holding Brinkmann GmbH & Co", "HELLY HANSEN", "Gymshark", "Lululemon Athletica", "Kohl's", "5.11 Tactical", "Lidl Stiftung & Co. Beteiligungs", "Academy Sports & Outdoors", "Burton Snowboards", "Aritzia", "Berne Apparel", "Ardene", "Ben Sherman", "BENETTON", "Camel Active", "ALDI Einkauf", "Alpha Broder Canada", "Beverly Hills Polo Club (BHPC)", "Ardisam", "Dick's Sporting Goods", "Chef Works", "Centric Brands", "Costco", "Duluth Trading Co", "Cotton On", "Country Road", "Disney Sourcing", "Auchan", "Betty Barclay", "Big Star", "C&A", "Canada Sportswear", "ADIDAS APPAREL", "CELIO", "Diesel", "El Corte Ingles", "Ginatricot", "Dillard's", "Shaynne", "Workwear Outfitters", "Under Armour Apparel", "Yamaki", "Tractor Supply", "Woolworth AUS", "YOC TNF", "WE Europe BV", "Tchibo", "TESCO", "The Buckle", "TK Maxx", "TRAWENA", "Umbro International Ltd", "YM Inc.", "Truewerk", "Suzyshier", "True Religion", "Merrell", "Tifossi", "TJ Maxx", "SAXX Underwear", "TARGET AUSTRALIA", "Orvis Company", "Pep & Co", "Primark", "Promod", "Puma (App.)", "QVC", "REITMANS", "River Island", "S OLIVER", "SAINSBURYS", "Sanctuary", "Nishimatsuya", "Avenue Stores", "Ariat International", "Al- Obaidani", "Arena", "Chicco", "Arvind Lifestyle Brands Limited", "Augusta Sportswear", "Austin Reed", "Aydinli", "Adler Modemarkte", "Ahead USA", "Alcott", "Alexon", "A&D Hope Ltd", "AJM INTERNATIONAL", "Grolls/Swedol/Univern", "Active Elite", "At Last Sportswear Inc", "Atlantic Sportswear", "Armed Angels", "AG GEAR", "Alpine Star", "Aeon", "America Today", "BONMAX", "Atlas", "Bootlegger", "Blair", "Bushman", "Basics Life", "Berkley Jensen", "Blackberry", "BMB", "Borch", "Boy Scouts of America", "BRAX", "Brook Tavener", "Browning", "Buck Wear", "BearBottom", "Bergans", "Bristol", "Bossini", "Brunn & Stengade (B&S)", "Bonds", "Burlington Coat Factory", "Brav Group", "Bernardo", "Best & Less", "bubbleroom", "Comark Inc. (Ricki's, CLEO)", "Celebrity Pink Jeans", "Capelli Sport", "Camelbak Products LLC", "Carrefour Tex", "Carreman Michel Thierry (CMT)", "MONOPRIX GROUP", "Cato", "CMT International", "Coalision, Lole", "Colins (Eroglu)", "CORONA", "Complices", "Crew Clothing Co", "Crown Crafts", "Christian Berg", "Crush Denim", "Coop (Denmark & Italy)", "Camicissima", "Castro", "CLINTON Grosshandels", "Charles Tyrwhitt", "Carrera Jeans", "C.M.T. COMPAGINIA MANIFATURE TESSIL", "Calzedonia Group", "Cellbes", "Chori", "Castore", "Goose", "Corsina", "Canpack", "CISALFA", "Crossline", "Connor", "Cape Union Mart", "DKNY (Donna Karen NY)", "Dress Barn", "Catherine's", "E Land Fashion", "Dri Duck", "Majestic", "Deroyal", "Damart-Despatures", "DAUN GROUP - NKD", "David Howard", "De Facto", "DESTINATION MATERNTY", "Devred", "Dimensions Alexandra", "DK Company Vejle", "DR DENIM", "Dunnes", "Edcon", "Ellen Tracy", "Encuentro", "Engbers GmbH & Co.KG", "ENGELBERT STRAUSS", "EQUIP Outdoor Technologies Ltd.", "Ernsting's family", "F. Engel", "Fab India", "Fashion Option", "Filson - Apparel", "Fishman & Tobin", "Freddy", "Fritz Hiltl", "Fruit of the Loom", "Fussl moden", "Detto Fatto", "Pimkie Orsay Xanaka", "Rab", "Edwards Garment", "EYDA", "FINKID", "Dassy Europe", "Exxel Outdoors", "Elis", "ED Walters", "Dobell", "ETERNA", "Finery London", "DUER", "ETOS S.A.", "FXD workwear", "Elegant Team", "Douglas & Grahame", "Frank and Oak", "Diverse", "Hanna Andersson", "HAGGAR", "Japana", "hap co.ltd", "Garan (Garanimals)", "GERBER CHILDRENSWEAR", "Justice", "Just Group", "Gazman", "Hurley", "Jackfield Canada", "JACHS", "Jessica Simpson", "GRAND NATIONAL APPAREL", "Galeries Lafayette", "GANDER MOUNTAIN", "Janie & Jack", "Gardeur", "Geoffrey Beene", "GEORGE/ASDA", "Gerry Weber", "Glassons", "Gloria Jeans", "Grafton - Fraser Inc", "Grey State", "Groupe Corwick", "Groupe Dynamite", "G-STAR", "Guess", "Guess Europe", "Güldenpfennig", "GYM AESTHETICS", "Hawes & Curtis", "HEMA B.V.", "Hope & Henry", "Horizon Global Industries", "House of Sunny", "HUGO BOSS", "Hummel Sport", "Hunkemoller", "Intersports", "ITC", "J Jill", "JACK WOLFSKIN", "JB Britches", "JD William", "Jeans Fritz", "Jockey", "Joe's Jeans", "John Lewis", "indigo rein", "Haddad Brands", "Great united", "Jcraft", "Jeaniologie", "Holy Fashion Group", "Armani Exchange", "Jack Wills", "Gustav Diver", "JRC (James Ross Collection)", "Gas Jeans", "John Richmond", "Habit Outdoors", "Indicode", "JOHNNY BIGG", "G&G Brands", "JD Sports", "Groupe GPE", "Investment Hardware Limited", "Jennyfer", "Kuhl", "Karl Lagerfeld International BV", "Muji", "Kurodaruma", "Mont Bell", "KURABO", "Kids Headquarters", "Loft", "Myer", "Kmart AUS", "LT Apparel Group", "Kenneth Cole", "Mr. Price", "Madura Garment Brands", "K&L RUPPERT", "Kaiser Bekleidung", "Kapp Ahl", "Kariban", "Karstadt Quelle", "Kaufhof", "Kegel (Classic Products Corp)", "American Recreation Products Inc.", "Kiabi", "KIK", "Komar Brands", "Koton", "Kroger", "L L Bean", "la Vie en Rose", "Landau Uniforms", "Landmark", "LANDS' END", "Laura Canada", "Lea Trade", "Lee Cooper France", "Lifestyle retail India", "Lindex", "Lisca", "Loblaws Company Ltd. (Joe Fresh)", "Lola Liza", "Louis Garneau Sports Inc.", "Louis Hebert Uniforms Inc.", "LPP S.A.", "Lyle & Scott", "MACY'S", "Mamiye Brothers Inc", "Mammut Sports Group (Apparel)", "MANGO", "MATALAN", "Maurices", "MAVI", "Mayoral", "MCS Italia", "Meijer", "Metro Germany - MGB", "mister-lady", "Monsoon", "Morrisons", "Moss Bros", "MOTHERCARE", "Mountain Warehouse", "MQ retail", "MS Mode Nederland BV", "Mufti", "Mustang Jeans", "Gant", "Kenvelo", "Metrolina Outdoor", "Lerros", "La Senza", "Mey & Edlich", "Killtec", "Kasper", "Mascot", "Leslunes", "LMA France", "Lazuli Level", "Kaporal", "Manifattura di Valduggia (Ragno)", "Klatter Musen", "Montane", "LION OF PORCHES", "Med Couture", "KEY Apparel", "Marc O' Polo", "Kathmandu", "Manscaped", "Modenik Lifestyles", "Millers", "Mosaic Brands Ltd", "Mulliez", "Sherpa Adventure Gear", "Right On", "Outdoor Research", "PSW", "Naked & famous", "NIKE APPAREL", "Salted Basics", "Rachel Roy", "Sunrise Brands", "Ring of Fire", "New Frontier", "NEW LOOK", "New wave", "New York & Co.", "New Yorker Grp", "Next Level", "Ninety Percent", "NORDSTROM", "Nybo Workwear A/S", "NYGARD", "OAKLEY", "OLYMP", "One Jeanswear Group", "O'Neill", "ORCHESTRA", "Original Marines", "Orsay", "OSPIG TEXTIL", "Ostin", "OTCF (4F)", "OVS", "Pacific Sunwear (PacSun)", "Pantaloons", "Paramount Apparel International Inc", "PATAGONIA", "Pepe Jeans", "Petrol Industries", "Piazza Italia", "Point Zero", "Poivre Blanc", "Polo Garage", "RALAWISE", "Raymond’s / Colour Plus", "Regatta Great Outdoors", "Reliance Trends", "Replay", "Richlu Manufacturing", "RnB", "Robe di Kappa", "Reef", "Roly", "Saintwears", "SanMar", "Samuel Windsor", "Union Bay", "Shinsegae", "Shoeby Fashion", "Slate & Stone", "Slaters", "Smith's Workwear", "SPAO", "Spykar Lifestyles Private Limited", "Stadium", "Stage Stores Inc.", "Stanley/Stella", "Steve Jeans", "Storm Tech Performance Apparel", "Stripe International", "Petit Bateau", "SWEDTEAM", "Peter Christian", "Sea Salt Clothing", "Rural King", "Sportailor", "Personal Shop", "Poncho Outdoors", "Pierre Cardin", "Paper Denim & Cloth", "Roman Originals", "Oh Polly", "Sports Direct", "Snugpak", "O'Neal", "RIP Curl Europe", "Stitch Fix", "Stooker Brands", "Salling Group", "Splash Clothing", "Namuk", "Navigare", "Simon Jersey", "Schiesser", "Swims", "Okamoto", "Suncity", "Seidensticker", "Nurdie", "Pure Cotton", "Rossini", "N.M.Williams (UK) Ltd.", "Padel", "Sprinter Sports", "Simms Fishing", "Sézane", "Scout Clothing", "Rewash", "Rev´it Sport International BV", "Parfois", "Oxford", "Siga International", "Scout Store", "Skopes", "Peloton", "Rare Rabbit", "Siksilk", "SWAZI", "Rockwear", "Stuncroft", "Port West", "Neiman Marcus", "Shirt & More GMBH", "School Knit", "Oak & Fort", "Sergent Major", "Promo Stars", "Reima", "Takaya", "Xebec", "Tamurakoma", "2XU", "Topson Downs of California", "Weenas", "Men's Wearhouse", "Vouri", "Trueworth", "LCWAIKIKI (TEMA)", "Littlewoods (Shop Direct)", "Tailor Vintage", "Takko Holding", "Tally Weijl", "TAO Sportswear", "TED BERNHARDTZ", "Teddy Spa", "Teenie Weenie", "Tillys", "TM Lewin", "Topper Tuotanto", "Trew Gear", "TRUTEX", "Vivarte La Halle", "VIKING RUBBER", "Westside", "White Stuff", "Woodland", "Woolrich", "Yamamay", "Zodiac", "Wolf Lingerie", "Truworths", "Weatherproof Garment Co.", "The Hut Group / My Protein", "Triumph International", "Zolla", "Wehkamp BV", "The Levy Group", "Women's Best", "zlabels / Zalando", "zpdc GMBH", "The Perfect Jean", "TKO Evolution", "Ted Baker", "Toast", "Top Ten", "Teddy Smith", "Tarocash", "6PM", "MONTEFUEGO", "TBH Global", "Voice Norge", "Tribal Design LLC", "Winter Bottom", "Zeco", "Zinntex PPE", "The Sting", "TravisMathew", "WALBUSCH", "TOPTEN", "American Tall", "Jack Archer", "Giant Tiger", "5.11 Tactical (FWA)", "ABC Mart (FWA)", "adidas (FWA)", "Amazon (FWA)", "Apex (FWA)", "Arc'Teryx Equipment (FWA)", "Black Diamond", "Caleres", "Calzaturificio Annabella Spa (FWA)", "Camel Active (FWA)", "Michael Kors (FWA)", "Carmens (FWA)", "Eddie Bauer (FWA)", "Ccc (FWA)", "Clarks (FWA)", "Decathlon (FWA)", "Deichmann (FWA)", "Anta Group", "Itochu (FWA)", "Uniqlo (FWA)", "Goldwin", "HUK Gear", "Inditex-Zara (FWA)", "LK International", "Lululemon Athletica (FWA)", "M&S (FWA)", "Macpac", "Marubeni (FWA)", "Mimco", "Next (FWA)", "OUTDOOR (FWA)", "Puma (FWA)", "Tommy Hilfiger (FWA)", "S Oliver (FWA)", "Salomon - Amer Sports (FWA)", "Talan (FWA)", "Kate Spade (FWA)", "Coach (FWA)", "VF Outdoor - Timberland (FWA)", "VF Active - Eastpak (FWA)", "VF Outdoor - North Face (TNF) (FWA)", "Williamson-Dickies Europe Ltd (FWA)", "VF Active - Jansport (FWA)", "VF Active - Napapijri (FWA)", "Wal-Mart (FWA)", "Merrell (FWA)", "Sorel", "Le Sport Sac", "Wolverine (FWA)", "Bugatti (Auto)", "Blaklader", "Alsico /MOLINEL", "FECSA", "Dierig Holding AG", "ITURRI GROUP", "Redcats", "Sun Garden", "L. Ten Cate", "Van Puijenbroek (Havep)", "Ziegler Textil GmbH", "Whitewear", "Vespo", "Eagle Creek", "Kjus", "Adolphe Lafont", "Casa Moda", "The Cherokee Group", "Falabella", "Deeluxe", "VF Outdoor - Altra, Smartwool", "ESPRIT", "Conbipel", "TSC", "Grupo VNC Cofemel - Sociedade de Vestuário, S.A.", "Confecciones Nalo", "Camaieu", "M & Co", "MG Boy's", "BHS (British Home Stores)", "Cotton Club", "Cotton Trend", "McGregor Sportswear BV", "Gruppo Coin", "Prominent Europe", "Izac", "Pegador", "Kaufland", "Zapa", "Ducks Unlimited", "Francesca's", "BMG (Brand Machine Group)", "Heyinz (Sportisimo)", "Petite Plume", "Lager 157", "AVX", "Zudio", "Active Brands", "Bliss Club", "Aditya Birla", "TATA Trent ltd", "HATTRIC", "A.M. LONDON", "Vanilla Underground", "BCN Import", "Voice Clothing", "Faded Glory", "INA Int'l (FGL Sports)", "Kontoor Outlets", "Van Heusen", "Sears Canada", "Bragard", "B&C", "CHARLES VOEGELE", "Peacocks", "Coleman", "Bon Marche", "ARCADIA", "Simons", "VF Jeanswear - 20x_Riders_Rock&Rep", "EDINBURGH WOOL MILL", "Lola", "Charlott", "SAXX", "Brandella Uniforms", "Canda", "IC Comp Peak Perform", "IKKS", "Prominent", "Time Out Clothing", "Alpine Pro", "Uvex", "BOOTS", "Trend For You", "Pretty Green", "Adanola", "Urban Outfitters", "Sam's Club", "We Fashion", "LPP - Reserved", "LPP - Cropp", "LPP - Mohito", "LPP - Sinsay", "LPP - House", "Amerex Group", "Molini", "future value retail ( Big Bazar)", "Indian Terrain", "Crimson Club", "Waltmann", "INBRANDS  S/A", "Handcraft", "Allen Solly", "LOUIS PHILLIPE - INLAND", "Peter England-Inland", "VAN HEUSEN - INLAND", "CENCOSUD", "Kingland", "EZEKIEL", "Max", "MS Mode", "The FAGEO", "Advance Manufacturing Group", "IKD Limited", "Next (Lilen)", "FAM Brands", "Enamor", "RED TAPE", "RED TAPE FOOTWEAR - INLAND", "Norwest", "STF Group", "Carlings", "Rookies", "Matrix", "Monte Carlo", "Feuchter", "Paterson", "Zivame", "Stooker", "Seyntex", "CCC", "Vertbaudet", "Marutomi", "NOVI Footwear", "Pointer Shoes", "String trading group", "Nutmeg", "PROMODORO", "VFO", "Hakro", "Texman", "Pioneer", "Voice Clothing", "Fynch Hatton", "Pure And Happy", "TNF Korea", "Splash", "Lovegen", "Scroll", "Port West Ltd", "VELTUFF", "DTO", "Thalhimer", "NYKAA", "SSTS (Shinsung Tongsang Co. Ltd.)", "Jockey - India", "Clinic& Job Dress (Germany)", "CFL Enterprise Limited", "Flying Machine", "STREET HQ LLC", "AWG", "H Best", "Les Lunes", "Tipo's", "Amante (India)", "Jaegook", "Diverses", "Sting", "MAAG", "BCN", "GMPC", "Being Human", "MGF Trading", "Zeel", "Turtle", "TRAVIS MATHEW", "Eternita", "Others"];
+const DEFAULT_SERVICE_BY = ['Internal FCE','Excelsior Courier','Internal Supply Chain Van','FCE (Urgent)'];
+const DEFAULT_RESPONSIBILITY = ['Excelsior Courier'];
 const FCE_COLORS = {'Sabbir':'#7c6af5','Rasel':'#4ecdc4','Torikul':'#f5a623','Akram':'#e57eb3','Mehedi':'#5baadc','Amirul 2':'#52c87a','Shajib':'#e05252','Amirul 1':'#f09f56','Biplob':'#a78bfa'};
 const PALETTE = ['#7c6af5','#4ecdc4','#f5a623','#e57eb3','#5baadc','#52c87a','#e05252','#f09f56','#a78bfa','#5dcaa5'];
 function fceColor(n){ return FCE_COLORS[n] || PALETTE[Math.abs(hashStr(n||''))%PALETTE.length]; }
 function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;} return h; }
+function fmtDate(d){ if(!d)return '—'; const dt=new Date((''+d).slice(0,10)+'T00:00:00'); if(isNaN(dt))return '—'; const dd=String(dt.getDate()).padStart(2,'0'); const mm=String(dt.getMonth()+1).padStart(2,'0'); return dd+'/'+mm+'/'+dt.getFullYear(); }
 
 // ═══ IN-MEMORY CACHE (filled from cloud) ═══
-let CACHE = { entries:[], users:[], master:null };
+let CACHE = { entries:[], users:[], master:null, orders:[] };
+let editingOrderId=null;
+const COLLECTION_SERVICES=['Internal FCE','Excelsior Courier'];
+const DELIVERY_SERVICES=['Excelsior Courier','Internal Supply Chain Van','FCE (Urgent)'];
+const ORDER_STATUSES=['Requested','Collected','In Development','Delivered'];
 let currentUser=null, editingId=null, approveId=null, activeFCE=null, activeMonthLog='all', activeChartsMonth='all';
 let comboMatches=[], comboHi=-1;
 
@@ -431,7 +473,14 @@ async function dbUpsertEntry(e){ const {error}=await sb.from('entries').upsert(e
 async function dbDeleteEntry(id){ const {error}=await sb.from('entries').delete().eq('id',id); if(error)throw error; }
 async function dbInsertUser(u){ const {error}=await sb.from('app_users').insert(u); if(error)throw error; }
 async function dbDeleteUser(id){ const {error}=await sb.from('app_users').delete().eq('id',id); if(error)throw error; }
-async function dbSaveMaster(m){ const {error}=await sb.from('master_data').upsert({id:1,fce:m.fce,customers:m.customers,purposes:m.purposes,reasons:m.reasons,updated_at:new Date().toISOString()}); if(error)throw error; }
+async function dbSaveMaster(m){ const {error}=await sb.from('master_data').upsert({id:1,fce:m.fce,customers:m.customers,purposes:m.purposes,reasons:m.reasons,buyers:m.buyers,updated_at:new Date().toISOString()}); if(error)throw error; }
+// ── Order Tracker DB ──
+async function dbGetOrders(){ const {data,error}=await sb.from('sample_orders').select('*').order('date',{ascending:false}); if(error)throw error; return data; }
+async function dbUpsertOrder(o){ const {error}=await sb.from('sample_orders').upsert(o); if(error)throw error; }
+async function dbDeleteOrder(id){ const {error}=await sb.from('sample_orders').delete().eq('id',id); if(error)throw error; }
+async function dbUploadNote(file, path){ const {error}=await sb.storage.from('delivery-notes').upload(path,file,{upsert:true}); if(error)throw error; return path; }
+function dbNoteUrl(path){ const {data}=sb.storage.from('delivery-notes').getPublicUrl(path); return data.publicUrl; }
+async function dbDeleteNote(path){ if(!path)return; await sb.storage.from('delivery-notes').remove([path]); }
 
 // Map a DB row to the shape the UI uses
 function rowToEntry(r){ return {id:r.id,date:r.date,month:r.month||r.date.slice(0,7),fce:r.fce,customer:r.customer,merch:r.merch,purpose:r.purpose,duration:r.duration,claimed:Number(r.claimed)||0,approved:r.approved!=null?Number(r.approved):null,status:r.status,notes:r.notes,order:r.ordernum,rejectionReason:r.reject_reason,authNote:r.auth_note,createdBy:r.created_by,approvedBy:r.approved_by}; }
@@ -449,17 +498,22 @@ async function refreshAll(){
       customers:(master.customers&&master.customers.length)?master.customers:CUSTOMER_MASTER.map(c=>c[1]),
       customerCodes:CUSTOMER_MASTER.slice(),
       purposes:(master.purposes&&master.purposes.length)?master.purposes:[...DEFAULT_PURPOSES],
-      reasons:(master.reasons&&master.reasons.length)?master.reasons:[...DEFAULT_REASONS]
-    } : { fce:[...DEFAULT_FCE_LIST], customers:CUSTOMER_MASTER.map(c=>c[1]), customerCodes:CUSTOMER_MASTER.slice(), purposes:[...DEFAULT_PURPOSES], reasons:[...DEFAULT_REASONS] };
+      reasons:(master.reasons&&master.reasons.length)?master.reasons:[...DEFAULT_REASONS],
+      buyers:(master.buyers&&master.buyers.length)?master.buyers:[...DEFAULT_BUYERS]
+    } : { fce:[...DEFAULT_FCE_LIST], customers:CUSTOMER_MASTER.map(c=>c[1]), customerCodes:CUSTOMER_MASTER.slice(), purposes:[...DEFAULT_PURPOSES], reasons:[...DEFAULT_REASONS], buyers:[...DEFAULT_BUYERS] };
+    try{ CACHE.orders=(await dbGetOrders()).map(rowToOrder); }catch(oe){ CACHE.orders=[]; }
     setSync(true,'Cloud synced');
     rerenderActive();
     populateAllSelects(); populateMonthFilters(); updateSidebarTotal(); checkNotifDot();
   }catch(e){ setSync(false,'Sync error'); showToast('Cloud sync failed: '+e.message,'err'); }
 }
 function setSync(ok,label){ const d=document.getElementById('sync-dot'); d.classList.toggle('off',!ok); document.getElementById('sync-label').textContent=label; }
-function getMaster(){ return CACHE.master||{fce:[...DEFAULT_FCE_LIST],customers:CUSTOMER_MASTER.map(c=>c[1]),customerCodes:CUSTOMER_MASTER.slice(),purposes:[...DEFAULT_PURPOSES],reasons:[...DEFAULT_REASONS]}; }
+function getMaster(){ return CACHE.master||{fce:[...DEFAULT_FCE_LIST],customers:CUSTOMER_MASTER.map(c=>c[1]),customerCodes:CUSTOMER_MASTER.slice(),purposes:[...DEFAULT_PURPOSES],reasons:[...DEFAULT_REASONS],buyers:[...DEFAULT_BUYERS]}; }
 function getUsers(){ return CACHE.users; }
 function getEntries(){ return CACHE.entries; }
+function getOrders(){ return CACHE.orders||[]; }
+function rowToOrder(r){ return {id:r.id,date:r.date,month:r.month,orderNo:r.order_no,task:r.task_type,customer:r.customer,buyer:r.buyer,fce:r.fce,service:r.service,reqTime:r.requested_time,from:r.from_loc,to:r.to_loc,status:r.status,deliveredAt:r.delivered_at,noteFile:r.note_file,noteName:r.note_name,remarks:r.remarks,createdBy:r.created_by}; }
+function orderToRow(o){ return {id:o.id,date:o.date,month:o.date.slice(0,7),order_no:o.orderNo||null,task_type:o.task||null,customer:o.customer||null,buyer:o.buyer||null,fce:o.fce||null,service:o.service||null,requested_time:o.reqTime||null,from_loc:o.from||null,to_loc:o.to||null,status:o.status||'Requested',delivered_at:o.deliveredAt||null,note_file:o.noteFile||null,note_name:o.noteName||null,remarks:o.remarks||null,created_by:o.createdBy||null,updated_at:new Date().toISOString()}; }
 
 // ═══ AUTH (checks against cloud users table) ═══
 async function doLogin(){
@@ -511,6 +565,7 @@ const NAV_ITEMS=[
   {id:'perfce',label:'Per FCE',group:'Analytics',icon:'<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.87"/>',roles:['admin','authorizer']},
   {id:'addentry',label:'Add Entry',group:'Entry',icon:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',roles:['admin','authorizer','fce'],accent:true},
   {id:'approval',label:'Approvals',group:'Entry',icon:'<path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',roles:['admin','authorizer'],notif:true},
+  {id:'orders',label:'Order Tracker',group:'Logistics',icon:'<rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',roles:['admin']},
   {id:'masterdata',label:'Master Data',group:'Admin',icon:'<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',roles:['admin','authorizer']},
   {id:'users',label:'User Accounts',group:'Admin',icon:'<path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>',roles:['admin']},
 ];
@@ -549,7 +604,7 @@ function monthLabel(m){ return new Date(m+'-01').toLocaleDateString('en-US',{mon
 function populateMonthFilters(){
   const months=getAvailableMonths();
   document.getElementById('month-filter-top').innerHTML='<option value="all">All months</option>'+months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
-  document.getElementById('sidebar-date-label').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  document.getElementById('sidebar-date-label').textContent=fmtDate(new Date().toISOString());
   document.getElementById('month-bar-log').innerHTML='<button class="month-chip active" onclick="setLogMonth(\'all\',this)">All</button>'+months.map(m=>`<button class="month-chip" onclick="setLogMonth('${m}',this)">${monthLabel(m)}</button>`).join('');
   document.getElementById('month-bar-charts').innerHTML='<button class="month-chip active" onclick="setChartsMonth(\'all\',this)">All</button>'+months.map(m=>`<button class="month-chip" onclick="setChartsMonth('${m}',this)">${monthLabel(m)}</button>`).join('');
 }
@@ -568,6 +623,7 @@ function populateAllSelects(){
   document.getElementById('e-fce').innerHTML=m.fce.map(f=>`<option>${f}</option>`).join('');
   document.getElementById('approve-reason-sel').innerHTML='<option value="">Select rejection reason…</option>'+m.reasons.map(r=>`<option>${r}</option>`).join('');
   const nuFce=document.getElementById('nu-fce'); if(nuFce) nuFce.innerHTML='<option value="">— none —</option>'+m.fce.map(f=>`<option>${f}</option>`).join('');
+  const oFce=document.getElementById('o-fce'); if(oFce){ if(isFCE()){ oFce.innerHTML=`<option>${currentUser.fce||currentUser.name}</option>`; oFce.value=currentUser.fce||currentUser.name; oFce.disabled=true; } else { oFce.innerHTML='<option value="">Select FCE…</option>'+m.fce.map(f=>`<option>${f}</option>`).join(''); oFce.disabled=false; } }
 }
 
 // ═══ SEARCHABLE CUSTOMER COMBO ═══
@@ -592,7 +648,7 @@ function comboKey(e){
   opts.forEach((o,i)=>o.classList.toggle('hi',i===comboHi));
   if(comboHi>=0&&opts[comboHi])opts[comboHi].scrollIntoView({block:'nearest'});
 }
-document.addEventListener('click',e=>{ if(!e.target.closest('.combo')){const l=document.getElementById('customer-combo-list');if(l)l.classList.remove('open');} });
+document.addEventListener('click',e=>{ if(!e.target.closest('.combo')){ document.querySelectorAll('.combo-list').forEach(l=>l.classList.remove('open')); } });
 
 // ═══ SUMMARY DATA ═══
 function getSummaryData(monthFilter){
@@ -639,7 +695,7 @@ function renderVisitLog(){
   visibleLogRows=rows;
   document.getElementById('detail-count').textContent=rows.length+' records';
   document.getElementById('detail-table').innerHTML=rows.map(e=>{
-    const c=fceColor(e.fce), d=new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+    const c=fceColor(e.fce), d=fmtDate(e.date);
     return `<tr><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td><span class="fce-chip" style="background:${c}22;color:${c};">${e.fce}</span></td><td style="font-size:12px;">${e.customer}</td><td style="font-size:12px;color:var(--muted);">${e.merch||'—'}</td><td class="purpose-text">${e.purpose}</td><td class="dur-text">${e.duration||'—'}</td><td class="ta-val">৳${(e.approved||e.claimed).toLocaleString()}</td><td>${statusBadge(e.status)}</td></tr>`;
   }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;">No records found</td></tr>';
 }
@@ -669,7 +725,7 @@ function renderMyEntries(){
   sec.style.display='block';
   document.getElementById('my-entries-title').textContent='My entries ('+entries.length+')';
   document.getElementById('my-entries-table').innerHTML=entries.sort((a,b)=>b.date.localeCompare(a.date)).map(e=>{
-    const d=new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+    const d=fmtDate(e.date);
     const appAmt=e.approved!=null?'৳'+e.approved.toLocaleString():'<span style="color:var(--muted)">—</span>';
     return `<tr><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td><span class="fce-chip" style="background:${fceColor(e.fce)}22;color:${fceColor(e.fce)};">${e.fce}</span></td><td style="font-size:12px;">${e.customer}</td><td class="purpose-text">${e.purpose}</td><td class="dur-text">${e.duration||'—'}</td><td class="ta-val">৳${e.claimed.toLocaleString()}</td><td>${appAmt}</td><td>${statusBadge(e.status)}</td><td style="white-space:nowrap;">${e.status==='draft'?`<button class="btn btn-submit btn-sm" onclick="submitDraft('${e.id}')">Submit</button>`:e.status==='rejected'?`<span style="font-size:11px;color:var(--red);" title="${e.rejectionReason||''}">${e.rejectionReason||'Rejected'}</span>`:''}</td></tr>`;
   }).join('');
@@ -683,7 +739,7 @@ function renderApprovalQueue(){
   const sf=document.getElementById('approval-status-filter').value;
   const entries=getEntries().filter(e=>{ if(!sf)return ['pending','approved','rejected'].includes(e.status); return e.status===sf; }).sort((a,b)=>{ if(a.status==='pending'&&b.status!=='pending')return -1; if(b.status==='pending'&&a.status!=='pending')return 1; return b.date.localeCompare(a.date); });
   document.getElementById('approval-table').innerHTML=entries.map(e=>{
-    const d=new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'}), c=fceColor(e.fce);
+    const d=fmtDate(e.date), c=fceColor(e.fce);
     const appAmt=e.approved!=null?'৳'+e.approved.toLocaleString():'<span style="color:var(--muted)">—</span>';
     const rowClass=e.status==='pending'?'approval-row-pending':e.status==='approved'?'approval-row-approved':'approval-row-rejected';
     const actions=e.status==='pending'?`<button class="btn-approve" onclick="openApproveModal('${e.id}')">Review</button>`:`<button class="btn-icon btn-sm" onclick="openEditModal('${e.id}')" title="Edit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>`;
@@ -693,7 +749,7 @@ function renderApprovalQueue(){
 function openApproveModal(id){
   approveId=id; const e=getEntries().find(x=>x.id===id); if(!e)return;
   document.getElementById('approve-modal-title').textContent='Review — '+e.fce+' / '+e.customer;
-  const d=new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const d=fmtDate(e.date);
   document.getElementById('approve-modal-body').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;"><div><div class="form-label">FCE</div><div style="margin-top:4px;font-weight:600;color:${fceColor(e.fce)};">${e.fce}</div></div><div><div class="form-label">Date</div><div style="margin-top:4px;">${d}</div></div><div><div class="form-label">Customer</div><div style="margin-top:4px;">${e.customer}</div></div><div><div class="form-label">Merchandiser</div><div style="margin-top:4px;">${e.merch||'—'}</div></div><div style="grid-column:1/-1;"><div class="form-label">Purpose</div><div style="margin-top:4px;">${e.purpose}</div></div><div><div class="form-label">Duration</div><div style="margin-top:4px;">${e.duration||'—'}</div></div><div><div class="form-label">Claimed</div><div style="margin-top:4px;font-family:'DM Mono';font-weight:600;color:var(--amber);">৳${e.claimed.toLocaleString()}</div></div>${e.notes?`<div style="grid-column:1/-1;"><div class="form-label">Notes</div><div style="margin-top:4px;font-size:12px;color:var(--muted);">${e.notes}</div></div>`:''}</div><div class="form-group" style="margin-bottom:12px;"><label class="form-label">Approved Amount (৳) * — set after investigation</label><input class="form-input" type="number" id="modal-approved-amt" value="${e.claimed}" min="0" step="50"/></div><div class="form-group"><label class="form-label">Authorizer note (optional)</label><textarea class="form-input" id="modal-auth-note" style="min-height:48px;"></textarea></div>`;
   document.getElementById('approve-reason-sel').style.display='none';
   document.getElementById('approve-modal').classList.add('open');
@@ -745,10 +801,11 @@ function renderMasterData(){
   document.getElementById('master-customer-list').innerHTML=shown.map(item=>masterItemHTML(item,'customer',m.customers.indexOf(item))).join('')+(custs.length>60?`<div class="combo-empty">+${custs.length-60} more — use search</div>`:'');
   renderMasterList('master-purpose-list',m.purposes,'purpose');
   renderMasterList('master-reason-list',m.reasons,'reason');
+  if(document.getElementById('master-buyer-list')) renderMasterList('master-buyer-list',m.buyers||[],'buyer');
 }
 function renderMasterList(id,items,type){ document.getElementById(id).innerHTML=items.map((item,i)=>masterItemHTML(item,type,i)).join(''); }
 function masterItemHTML(item,type,i){ return `<div class="master-item"><span class="mi-name">${item}</span><div style="display:flex;gap:6px;"><button class="btn-icon" style="padding:3px 6px;" onclick="editMasterItem('${type}',${i})" title="Edit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button><button class="btn-icon" style="padding:3px 6px;color:var(--red);" onclick="deleteMasterItem('${type}',${i})" title="Remove"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div></div>`; }
-function masterKey(t){ return t==='fce'?'fce':t==='customer'?'customers':t==='purpose'?'purposes':'reasons'; }
+function masterKey(t){ return t==='fce'?'fce':t==='customer'?'customers':t==='purpose'?'purposes':t==='buyer'?'buyers':'reasons'; }
 async function addMasterItem(type){
   const val=document.getElementById('new-'+type+'-input').value.trim(); if(!val){ showToast('Enter a name first.','err'); return; }
   const m=getMaster(); const key=masterKey(type); if(m[key].includes(val)){ showToast('Already exists.','err'); return; }
@@ -771,7 +828,7 @@ function onRoleChange(){ const r=document.getElementById('nu-role').value; docum
 function renderUsers(){
   if(!isAdmin())return;
   const users=getUsers(); const rc={admin:'#7c6af5',authorizer:'#4ecdc4',fce:'#f5a623'}, rl={admin:'Super Admin',authorizer:'Authorizer',fce:'FCE User'};
-  document.getElementById('user-list').innerHTML=users.map(u=>`<div class="user-row"><div style="display:flex;align-items:center;gap:12px;min-width:0;"><div class="user-avatar" style="background:${rc[u.role]}22;color:${rc[u.role]};">${u.name.charAt(0)}</div><div style="min-width:0;"><div style="font-weight:600;font-size:13px;">${u.name}</div><div style="font-size:11px;color:var(--muted);">ID: ${u.id}${u.fce?' · '+u.fce:''}${u.station?' · '+u.station:''}</div></div></div><div style="display:flex;align-items:center;gap:10px;"><span class="status-badge" style="background:${rc[u.role]}22;color:${rc[u.role]};border:1px solid ${rc[u.role]}44;">${rl[u.role]}</span>${u.id!==currentUser.id?`<button class="btn-icon" style="padding:4px 8px;color:var(--red);" onclick="removeUser('${u.id}')" title="Remove"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`:'<span style="font-size:11px;color:var(--muted);">you</span>'}</div></div>`).join('');
+  document.getElementById('user-list').innerHTML=users.map(u=>`<div class="user-row"><div style="display:flex;align-items:center;gap:12px;min-width:0;"><div class="user-avatar" style="background:${rc[u.role]}22;color:${rc[u.role]};">${u.name.charAt(0)}</div><div style="min-width:0;"><div style="font-weight:600;font-size:13px;">${u.name}</div><div style="font-size:11px;color:var(--muted);">ID: ${u.id}${u.fce?' · '+u.fce:''}${u.station?' · '+u.station:''}</div></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="status-badge" style="background:${rc[u.role]}22;color:${rc[u.role]};border:1px solid ${rc[u.role]}44;">${rl[u.role]}</span><button class="btn-icon" style="padding:4px 8px;" onclick="resetPassword('${u.id}')" title="Reset password"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/></svg></button>${u.id!==currentUser.id?`<button class="btn-icon" style="padding:4px 8px;color:var(--red);" onclick="removeUser('${u.id}')" title="Remove"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`:'<span style="font-size:11px;color:var(--muted);">you</span>'}</div></div>`).join('');
 }
 async function addUser(){
   if(!isAdmin()){ showToast('Admin only.','err'); return; }
@@ -788,6 +845,14 @@ async function removeUser(id){
   if(id===currentUser.id){ showToast("You can't remove yourself.",'err'); return; }
   if(!confirm('Remove this user?'))return;
   try{ await dbDeleteUser(id); await refreshAll(); showToast('User removed.'); }catch(e){ showToast('Failed: '+e.message,'err'); }
+}
+async function resetPassword(id){
+  if(!isAdmin()){ showToast('Admin only.','err'); return; }
+  const u=getUsers().find(x=>x.id===id); if(!u)return;
+  const np=prompt('Set a new password for "'+u.name+'" (ID: '+u.id+'):');
+  if(np===null) return;
+  if(!np.trim()){ showToast('Password cannot be empty.','err'); return; }
+  try{ const {error}=await sb.from('app_users').update({password:np.trim()}).eq('id',id); if(error)throw error; await refreshAll(); showToast('Password reset for '+u.id+'.'); }catch(e){ showToast('Failed: '+e.message,'err'); }
 }
 
 // ═══ PER FCE ═══
@@ -807,7 +872,7 @@ function selectFCE(name){
   document.getElementById('fce-panel-title').textContent=name+' — Visit Log';
   document.getElementById('fce-panel-sub').textContent=rows.length+' entries · ৳'+total.toLocaleString()+' total';
   document.getElementById('fce-log-table').innerHTML=rows.map(e=>{
-    const d=new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+    const d=fmtDate(e.date);
     return `<tr><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${e.customer}</td><td style="font-size:12px;color:var(--muted);">${e.merch||'—'}</td><td class="purpose-text">${e.purpose}</td><td class="dur-text">${e.duration||'—'}</td><td class="ta-val">৳${(e.approved||e.claimed).toLocaleString()}</td><td>${statusBadge(e.status)}</td></tr>`;
   }).join('');
   setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'start'}),100);
@@ -875,7 +940,7 @@ function downloadChartsTable(){
 }
 
 // ═══ NAV ═══
-const PAGE_META={dashboard:['Dashboard','FCE performance overview'],visitlog:['Visit Log','All daily visit records'],charts:['Charts','Visual analytics & summary table'],perfce:['Per FCE','Individual FCE breakdown'],addentry:['Add Entry','Record a new FCE visit'],approval:['Approvals','Review and approve TA claims'],masterdata:['Master Data','Manage lists used in forms'],users:['User Accounts','Manage user access']};
+const PAGE_META={dashboard:['Dashboard','FCE performance overview'],visitlog:['Visit Log','All daily visit records'],charts:['Charts','Visual analytics & summary table'],perfce:['Per FCE','Individual FCE breakdown'],addentry:['Add Entry','Record a new FCE visit'],approval:['Approvals','Review and approve TA claims'],masterdata:['Master Data','Manage lists used in forms'],users:['User Accounts','Manage user access'],orders:['Order Tracker','Swatch collection & sample delivery']};
 let activePage='dashboard';
 function showPage(name,btn){
   const item=NAV_ITEMS.find(i=>i.id===name);
@@ -898,10 +963,163 @@ function rerenderActive(){
   if(name==='approval')renderApprovalQueue();
   if(name==='masterdata')renderMasterData();
   if(name==='users')renderUsers();
+  if(name==='orders')renderOrders();
   checkNotifDot();
 }
-function onSearch(){ renderVisitLog(); }
+function onSearch(){ if(activePage==='orders')renderOrders(); else renderVisitLog(); }
 function onFCEFilter(){ renderVisitLog(); renderSummary(); }
+
+// ═══ ORDER TRACKER ═══
+let activeOrderStatus='all';
+function scopedOrders(){ const mf=myFCE(); return mf?getOrders().filter(o=>o.fce===mf):getOrders(); }
+function buildOrderStatusBar(){
+  const bar=document.getElementById('order-status-bar'); if(!bar)return;
+  const chips=['all',...ORDER_STATUSES];
+  bar.innerHTML=chips.map(s=>`<button class="month-chip${(activeOrderStatus===s)?' active':''}" onclick="setOrderStatus('${s}',this)">${s==='all'?'All':s}</button>`).join('');
+}
+function setOrderStatus(s,btn){ activeOrderStatus=s; document.querySelectorAll('#order-status-bar .month-chip').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderOrders(); }
+function orderStatusBadge(s){ const m={'Requested':'s-pending','Collected':'s-draft','In Development':'s-pending','Delivered':'s-approved'}; return `<span class="status-badge ${m[s]||'s-draft'}">${s}</span>`; }
+let visibleOrders=[];
+function renderOrders(){
+  buildOrderStatusBar();
+  const taskF=document.getElementById('order-task-filter').value;
+  const srch=document.getElementById('global-search').value.toLowerCase();
+  let rows=scopedOrders().filter(o=>{
+    if(activeOrderStatus!=='all'&&o.status!==activeOrderStatus)return false;
+    if(taskF&&o.task!==taskF)return false;
+    if(srch&&!(o.customer||'').toLowerCase().includes(srch)&&!(o.buyer||'').toLowerCase().includes(srch)&&!(o.orderNo||'').toLowerCase().includes(srch)&&!(o.fce||'').toLowerCase().includes(srch))return false;
+    return true;
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+  visibleOrders=rows;
+  document.getElementById('order-count').textContent=rows.length+' orders';
+  document.getElementById('orders-table').innerHTML=rows.map(o=>{
+    const d=fmtDate(o.date);
+    const extra = o.task==='Sample Delivery'
+      ? (o.deliveredAt?('Delivered '+fmtDate(o.deliveredAt)):'—')
+      : (o.reqTime?('Req. '+o.reqTime):'—');
+    const note=o.noteFile?`<a href="${dbNoteUrl(o.noteFile)}" target="_blank" rel="noopener" class="btn-approve" style="text-decoration:none;">Download</a>`:'<span style="color:var(--muted);">—</span>';
+    return `<tr><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${o.orderNo||'—'}</td><td style="font-size:12px;">${o.task||'—'}</td><td style="font-size:12px;">${o.customer||'—'}</td><td style="font-size:12px;">${o.buyer||'—'}</td><td style="font-size:12px;">${o.service||'—'}</td><td style="font-size:12px;color:var(--muted);">${extra}</td><td>${orderStatusBadge(o.status)}</td><td>${note}</td><td><button class="btn-icon btn-sm" onclick="openOrderModal('${o.id}')" title="Edit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button></td></tr>`;
+  }).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">No orders yet — click "New Order" to add one</td></tr>';
+}
+function onTaskChange(){
+  const task=document.getElementById('o-task').value;
+  const sel=document.getElementById('o-service');
+  const list=task==='Swatch Collection'?COLLECTION_SERVICES:task==='Sample Delivery'?DELIVERY_SERVICES:[];
+  sel.innerHTML=list.length?'<option value="">Select service…</option>'+list.map(s=>`<option>${s}</option>`).join(''):'<option value="">Select task first…</option>';
+  // show/hide conditional field groups
+  const showSwatch=task==='Swatch Collection', showDelivery=task==='Sample Delivery';
+  document.querySelectorAll('.o-swatch').forEach(el=>el.style.display=showSwatch?'flex':'none');
+  document.querySelectorAll('.o-delivery').forEach(el=>el.style.display=showDelivery?'flex':'none');
+}
+function onOrderStatusChange(){
+  const st=document.getElementById('o-status').value;
+  const del=document.getElementById('o-delivered');
+  if(st==='Delivered'&&!del.value){ del.value=new Date().toISOString().split('T')[0]; }
+}
+// Searchable combos for Customer (from 705 list) and Buyer (from master buyers)
+let oCombo={field:null,matches:[]};
+function oComboFilter(field,q){
+  const m=getMaster();
+  const list=document.getElementById('o-'+field+'-list');
+  let source;
+  if(field==='customer'){ source=(m.customerCodes||CUSTOMER_MASTER).map(c=>c[1]); }
+  else { source=(m.buyers||[]).slice(); }
+  q=(q||'').toLowerCase().trim();
+  const matches = !q ? source.slice(0,40) : source.filter(x=>x.toLowerCase().includes(q)).slice(0,50);
+  oCombo={field,matches};
+  if(!matches.length){ list.innerHTML='<div class="combo-empty">No match — your typed text will be used as-is.</div>'; list.classList.add('open'); return; }
+  list.innerHTML=matches.map((x,i)=>`<div class="combo-opt" onmousedown="oComboPick('${field}',${i})"><span>${x}</span></div>`).join('');
+  list.classList.add('open');
+}
+function oComboPick(field,i){ const v=oCombo.matches[i]; if(v==null)return; document.getElementById('o-'+field).value=v; document.getElementById('o-'+field+'-list').classList.remove('open'); }
+function openOrderModal(id){
+  if(!isAdmin()){ showToast('Order Tracker is Super Admin only.','err'); return; }
+  editingOrderId=id||null;
+  document.getElementById('order-modal-title').textContent=id?'Edit Order':'New Order';
+  document.getElementById('o-delete-btn').style.display=id?'inline-flex':'none';
+  document.getElementById('o-file-current').textContent='';
+  document.getElementById('o-file').value='';
+  populateOrderFce();
+  if(id){
+    const o=getOrders().find(x=>x.id===id); if(!o)return;
+    document.getElementById('o-date').value=o.date;
+    document.getElementById('o-orderno').value=o.orderNo||'';
+    document.getElementById('o-task').value=o.task||''; onTaskChange();
+    document.getElementById('o-service').value=o.service||'';
+    document.getElementById('o-customer').value=o.customer||'';
+    document.getElementById('o-buyer').value=o.buyer||'';
+    document.getElementById('o-fce').value=o.fce||'';
+    document.getElementById('o-reqtime').value=o.reqTime||'';
+    document.getElementById('o-status').value=o.status||'Requested';
+    document.getElementById('o-delivered').value=o.deliveredAt||'';
+    document.getElementById('o-remarks').value=o.remarks||'';
+    if(o.noteFile) document.getElementById('o-file-current').innerHTML=`Current: <a href="${dbNoteUrl(o.noteFile)}" target="_blank" rel="noopener" style="color:var(--accent2);">${o.noteName||'view note'}</a>`;
+  } else {
+    document.getElementById('o-date').value=new Date().toISOString().split('T')[0];
+    ['o-orderno','o-customer','o-buyer','o-reqtime','o-remarks','o-delivered'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('o-task').value=''; onTaskChange();
+    document.getElementById('o-status').value='Requested';
+    document.getElementById('o-fce').value='';
+  }
+  document.getElementById('order-modal').classList.add('open');
+}
+function populateOrderFce(){
+  // Responsibility To = FCE list + Excelsior Courier
+  const m=getMaster();
+  const opts=[...m.fce, ...DEFAULT_RESPONSIBILITY.filter(r=>!m.fce.includes(r))];
+  document.getElementById('o-fce').innerHTML='<option value="">Select…</option>'+opts.map(f=>`<option>${f}</option>`).join('');
+}
+async function saveOrder(){
+  if(!isAdmin()){ showToast('Super Admin only.','err'); return; }
+  const date=document.getElementById('o-date').value;
+  const task=document.getElementById('o-task').value;
+  if(!date||!task){ showToast('Date and Task Type are required.','err'); return; }
+  const o={ id:editingOrderId||('o_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)),
+    date, orderNo:document.getElementById('o-orderno').value.trim(), task,
+    service:document.getElementById('o-service').value, customer:document.getElementById('o-customer').value.trim(),
+    buyer:document.getElementById('o-buyer').value.trim(), fce:document.getElementById('o-fce').value,
+    reqTime:document.getElementById('o-reqtime').value.trim(),
+    status:document.getElementById('o-status').value, deliveredAt:document.getElementById('o-delivered').value||null,
+    remarks:document.getElementById('o-remarks').value.trim(), createdBy:currentUser.id };
+  if(editingOrderId){ const ex=getOrders().find(x=>x.id===editingOrderId); if(ex){ o.noteFile=ex.noteFile; o.noteName=ex.noteName; } }
+  const fileInput=document.getElementById('o-file');
+  const btn=document.getElementById('o-save-btn');
+  try{
+    btn.disabled=true; btn.innerHTML='<span class="loader"></span> Saving…';
+    if(fileInput.files&&fileInput.files[0]){
+      const file=fileInput.files[0];
+      const ext=file.name.split('.').pop();
+      const path=o.id+'_'+Date.now()+'.'+ext;
+      await dbUploadNote(file,path);
+      o.noteFile=path; o.noteName=file.name;
+    }
+    await dbUpsertOrder(orderToRow(o));
+    await refreshAll();
+    closeModal('order-modal');
+    showPage('orders',document.querySelector('[data-page=orders]'));
+    showToast('Order saved.');
+  }catch(e){ showToast('Save failed: '+e.message,'err'); }
+  finally{ btn.disabled=false; btn.textContent='Save Order'; }
+}
+async function deleteOrder(){
+  if(!editingOrderId)return;
+  if(!confirm('Delete this order?'))return;
+  try{
+    const o=getOrders().find(x=>x.id===editingOrderId);
+    if(o&&o.noteFile) await dbDeleteNote(o.noteFile);
+    await dbDeleteOrder(editingOrderId);
+    await refreshAll();
+    closeModal('order-modal');
+    showToast('Order deleted.');
+  }catch(e){ showToast('Delete failed: '+e.message,'err'); }
+}
+function downloadOrders(){
+  const rows=visibleOrders;
+  const header='Date,Order No,Task,Service By,Customer Name,Buyer Name,Responsibility To,Requested Time,Status,Delivery Date,Note,Remarks\n';
+  const csv=rows.map(o=>[fmtDate(o.date),o.orderNo||'',o.task||'',o.service||'',o.customer||'',o.buyer||'',o.fce||'',o.reqTime||'',o.status||'',o.deliveredAt?fmtDate(o.deliveredAt):'',o.noteName||'',o.remarks||''].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([header+csv],{type:'text/csv'})); a.download='Sample_Orders.csv'; a.click();
+}
+
 function showToast(msg,type){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'+(type==='err'?' err':''); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3200); }
 
 // ═══ START ═══
