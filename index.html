@@ -367,10 +367,10 @@ select.form-input option{background:var(--surface2);}
           <select class="filter-sel" id="order-task-filter" onchange="renderOrders()"><option value="">All tasks</option><option>Swatch Collection</option><option>Sample Delivery</option></select>
           <span class="count-badge" id="order-count">—</span>
           <button class="btn btn-ghost btn-sm" onclick="downloadOrders()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download CSV</button>
-          <button class="btn btn-primary btn-sm" id="order-new-btn" onclick="openOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>New Order</button>
+          <button class="btn btn-primary btn-sm" id="order-new-btn" onclick="openOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>New Order Entry</button>
         </div>
       </div>
-      <div class="card" style="overflow:auto;"><table><thead><tr><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Req. Time / Delivered</th><th>Status</th><th>Note</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
+      <div class="card" style="overflow:auto;"><table><thead><tr><th style="width:30px;"></th><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Req. Time / Delivered</th><th>Status</th><th>Note</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
     </div>
 
 <div class="modal-overlay" id="approve-modal"><div class="modal">
@@ -1042,8 +1042,17 @@ function renderOrders(){
       : (o.reqTime?('Req. '+o.reqTime):'—');
     const note=o.noteFile?`<a href="${dbNoteUrl(o.noteFile)}" target="_blank" rel="noopener" class="btn-approve" style="text-decoration:none;">Download</a>`:'<span style="color:var(--muted);">—</span>';
     const editBtn=canEdit?`<button class="btn-icon btn-sm" onclick="openOrderModal('${o.id}')" title="Edit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>`:'<span style="color:var(--muted);">—</span>';
-    return `<tr><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${o.orderNo||'—'}</td><td style="font-size:12px;">${o.task||'—'}</td><td style="font-size:12px;">${o.customer||'—'}</td><td style="font-size:12px;">${o.buyer||'—'}</td><td style="font-size:12px;">${o.service||'—'}</td><td style="font-size:12px;color:var(--muted);">${extra}</td><td>${orderStatusBadge(o.status)}</td><td>${note}</td><td>${editBtn}</td></tr>`;
-  }).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">No orders yet</td></tr>';
+    const chevron=`<button class="btn-icon btn-sm" onclick="toggleOrderRow('${o.id}')" title="Show details" id="chev-${o.id}" style="transition:transform .15s;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>`;
+    const detailItems=[
+      ['Responsibility To',o.fce],
+      ['Requested Time',o.reqTime],
+      ['Delivery Date',o.deliveredAt?fmtDate(o.deliveredAt):''],
+      ['Created by',o.createdBy],
+      ['Remarks',o.remarks]
+    ].filter(x=>x[1]);
+    const detail=`<tr id="detail-${o.id}" style="display:none;background:var(--surface2);"><td></td><td colspan="10" style="padding:12px 14px;"><div style="display:flex;flex-wrap:wrap;gap:8px 28px;">${detailItems.length?detailItems.map(([k,v])=>`<div style="min-width:120px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:'DM Mono',monospace;">${k}</div><div style="font-size:13px;color:var(--text);margin-top:2px;">${v}</div></div>`).join(''):'<span style="font-size:12px;color:var(--muted);">No extra details.</span>'}</div></td></tr>`;
+    return `<tr><td>${chevron}</td><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${o.orderNo||'—'}</td><td style="font-size:12px;">${o.task||'—'}</td><td style="font-size:12px;">${o.customer||'—'}</td><td style="font-size:12px;">${o.buyer||'—'}</td><td style="font-size:12px;">${o.service||'—'}</td><td style="font-size:12px;color:var(--muted);">${extra}</td><td>${orderStatusBadge(o.status)}</td><td>${note}</td><td>${editBtn}</td></tr>${detail}`;
+  }).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:24px;">No orders yet</td></tr>';
   // Hide the New Order button for view-only users
   const newBtn=document.getElementById('order-new-btn'); if(newBtn) newBtn.style.display=canEdit?'':'none';
 }
@@ -1054,6 +1063,14 @@ function canEditOrders(){
   const allowed=allowedPagesFor(currentUser);
   const onlyOrders=allowed.length>0 && allowed.every(p=>p==='orders');
   return !onlyOrders;
+}
+function toggleOrderRow(id){
+  const row=document.getElementById('detail-'+id);
+  const chev=document.getElementById('chev-'+id);
+  if(!row)return;
+  const open=row.style.display!=='none';
+  row.style.display=open?'none':'table-row';
+  if(chev) chev.style.transform=open?'rotate(0deg)':'rotate(90deg)';
 }
 function onTaskChange(){
   const task=document.getElementById('o-task').value;
@@ -1089,7 +1106,7 @@ function oComboPick(field,i){ const v=oCombo.matches[i]; if(v==null)return; docu
 function openOrderModal(id){
   if(!canSee('orders')){ showToast('You don\'t have access to Order Tracker.','err'); return; }
   editingOrderId=id||null;
-  document.getElementById('order-modal-title').textContent=id?'Edit Order':'New Order';
+  document.getElementById('order-modal-title').textContent=id?'Edit Order Entry':'New Order Entry';
   document.getElementById('o-delete-btn').style.display=id?'inline-flex':'none';
   document.getElementById('o-file-current').textContent='';
   document.getElementById('o-file').value='';
