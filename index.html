@@ -223,7 +223,7 @@ select.form-input option{background:var(--surface2);}
   <div class="sidebar-footer">
     <div class="role-pill"><div class="rl">Signed in</div><div class="rv" id="current-user-label">—</div><div class="rr" id="current-role-label">—</div></div>
     <div class="sync-pill"><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Cloud synced</span></div>
-    <div class="total-pill"><div class="tl" id="total-pill-label">Approved TA</div><div class="tv" id="sidebar-total">৳0</div></div>
+    <div class="total-pill" id="total-pill"><div class="tl" id="total-pill-label">Approved TA</div><div class="tv" id="sidebar-total">৳0</div></div>
     <button class="logout-btn" onclick="doLogout()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</button>
   </div>
 </aside>
@@ -367,7 +367,7 @@ select.form-input option{background:var(--surface2);}
           <select class="filter-sel" id="order-task-filter" onchange="renderOrders()"><option value="">All tasks</option><option>Swatch Collection</option><option>Sample Delivery</option></select>
           <span class="count-badge" id="order-count">—</span>
           <button class="btn btn-ghost btn-sm" onclick="downloadOrders()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download CSV</button>
-          <button class="btn btn-primary btn-sm" onclick="openOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>New Order</button>
+          <button class="btn btn-primary btn-sm" id="order-new-btn" onclick="openOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>New Order</button>
         </div>
       </div>
       <div class="card" style="overflow:auto;"><table><thead><tr><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Req. Time / Delivered</th><th>Status</th><th>Note</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
@@ -611,6 +611,11 @@ async function bootApp(){
   const onlyOrders=allowed.length>0 && allowed.every(p=>p==='orders');
   const titleEl=document.getElementById('app-subtitle');
   if(titleEl) titleEl.textContent=onlyOrders?'Sample Order Tracker':'FCE TA Tracker';
+  // Hide TA-specific UI (Approved TA pill + FCE/month top filters) for users who can't see TA pages
+  const seesTA = allowed.some(p=>['dashboard','visitlog','charts','perfce','addentry','approval'].includes(p));
+  const pill=document.getElementById('total-pill'); if(pill) pill.style.display=seesTA?'block':'none';
+  const ff=document.getElementById('fce-filter'); if(ff&&!seesTA) ff.style.display='none';
+  const mf=document.getElementById('month-filter-top'); if(mf) mf.style.display=seesTA?'':'none';
   // Land on the first page the user is allowed to see
   const landing=allowed.includes('dashboard')?'dashboard':(allowed[0]||'dashboard');
   showPage(landing);
@@ -1029,14 +1034,26 @@ function renderOrders(){
   }).sort((a,b)=>b.date.localeCompare(a.date));
   visibleOrders=rows;
   document.getElementById('order-count').textContent=rows.length+' orders';
+  const canEdit=canEditOrders();
   document.getElementById('orders-table').innerHTML=rows.map(o=>{
     const d=fmtDate(o.date);
     const extra = o.task==='Sample Delivery'
       ? (o.deliveredAt?('Delivered '+fmtDate(o.deliveredAt)):'—')
       : (o.reqTime?('Req. '+o.reqTime):'—');
     const note=o.noteFile?`<a href="${dbNoteUrl(o.noteFile)}" target="_blank" rel="noopener" class="btn-approve" style="text-decoration:none;">Download</a>`:'<span style="color:var(--muted);">—</span>';
-    return `<tr><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${o.orderNo||'—'}</td><td style="font-size:12px;">${o.task||'—'}</td><td style="font-size:12px;">${o.customer||'—'}</td><td style="font-size:12px;">${o.buyer||'—'}</td><td style="font-size:12px;">${o.service||'—'}</td><td style="font-size:12px;color:var(--muted);">${extra}</td><td>${orderStatusBadge(o.status)}</td><td>${note}</td><td><button class="btn-icon btn-sm" onclick="openOrderModal('${o.id}')" title="Edit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button></td></tr>`;
-  }).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">No orders yet — click "New Order" to add one</td></tr>';
+    const editBtn=canEdit?`<button class="btn-icon btn-sm" onclick="openOrderModal('${o.id}')" title="Edit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>`:'<span style="color:var(--muted);">—</span>';
+    return `<tr><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${o.orderNo||'—'}</td><td style="font-size:12px;">${o.task||'—'}</td><td style="font-size:12px;">${o.customer||'—'}</td><td style="font-size:12px;">${o.buyer||'—'}</td><td style="font-size:12px;">${o.service||'—'}</td><td style="font-size:12px;color:var(--muted);">${extra}</td><td>${orderStatusBadge(o.status)}</td><td>${note}</td><td>${editBtn}</td></tr>`;
+  }).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">No orders yet</td></tr>';
+  // Hide the New Order button for view-only users
+  const newBtn=document.getElementById('order-new-btn'); if(newBtn) newBtn.style.display=canEdit?'':'none';
+}
+function canEditOrders(){
+  if(!canSee('orders')) return false;
+  if(isAdmin()) return true;
+  // Orders-only (logistics) users are view + download only
+  const allowed=allowedPagesFor(currentUser);
+  const onlyOrders=allowed.length>0 && allowed.every(p=>p==='orders');
+  return !onlyOrders;
 }
 function onTaskChange(){
   const task=document.getElementById('o-task').value;
