@@ -23,10 +23,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:400px;padding:32px;}
 .login-logo{text-align:center;margin-bottom:24px;}
 .sc-badge{width:64px;height:64px;border-radius:16px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-weight:600;font-size:26px;color:#fff;background:linear-gradient(135deg,#2f7fed,#37c2d6);box-shadow:0 6px 20px rgba(47,127,237,.4);letter-spacing:.5px;}
-.sc-badge-sm{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:19px;color:#fff;background:linear-gradient(135deg,#2f7fed,#37c2d6);flex-shrink:0;letter-spacing:.5px;box-shadow:0 4px 14px rgba(47,127,237,.45);}
-.logo-row{display:flex;align-items:center;gap:13px;}
-.logo-row>div:last-child{display:flex;flex-direction:column;justify-content:center;}
-.logo-row .logo-tag{line-height:1.2;margin-bottom:2px;}
+.sc-badge-sm{width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:20px;color:#fff;background:linear-gradient(135deg,#2f7fed,#37c2d6);flex-shrink:0;letter-spacing:.5px;box-shadow:0 4px 14px rgba(47,127,237,.45);}
+.logo-row{display:flex;align-items:flex-start;gap:13px;}
+.logo-row>div:last-child{display:flex;flex-direction:column;}
+.logo-row .logo-tag{line-height:1.2;margin-bottom:1px;}
 .logo-row .logo-title{line-height:1.2;font-size:16px;}
 .login-logo .lt{font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;font-family:'DM Mono',monospace;}
 .login-logo .ln{font-size:22px;font-weight:600;margin-top:4px;}
@@ -217,7 +217,7 @@ select.form-input option{background:var(--surface2);}
 
 <div class="app hidden" id="app">
 <aside class="sidebar">
-  <div class="logo"><div class="logo-row"><div class="sc-badge-sm">SC</div><div><div class="logo-tag">Coats BD</div><div class="logo-title">SC Digital Team</div></div></div><div style="margin-top:10px;"><div class="logo-sub" style="color:var(--accent2);font-weight:500;">FCE TA Tracker</div><div class="logo-sub" id="sidebar-date-label" style="margin-top:1px;"></div></div></div>
+  <div class="logo"><div class="logo-row"><div class="sc-badge-sm">SC</div><div><div class="logo-tag">Coats BD</div><div class="logo-title">SC Digital Team</div><div class="logo-sub" style="color:var(--accent2);font-weight:500;margin-top:3px;">FCE TA Tracker</div><div class="logo-sub" id="sidebar-date-label" style="margin-top:1px;"></div></div></div></div>
   <nav class="nav" id="nav-menu"></nav>
   <div class="sidebar-footer">
     <div class="role-pill"><div class="rl">Signed in</div><div class="rv" id="current-user-label">—</div><div class="rr" id="current-role-label">—</div></div>
