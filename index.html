@@ -249,7 +249,7 @@ select.form-input option{background:var(--surface2);}
 <!-- LOGIN -->
 <div class="login-screen" id="login-screen">
   <div class="login-card">
-    <div class="login-logo"><div class="sc-badge">SC</div><div class="lt">Coats BD</div><div class="ln">SC Digital Team</div><div class="ls">Sign in to continue</div></div>
+    <div class="login-logo"><div class="sc-badge">SC</div><div class="lt">Coats BD Ltd.</div><div class="ln">SC Digital Team</div><div class="ls">Sign in to continue</div></div>
     <div class="conn-banner hidden" id="conn-banner"></div>
     <div class="login-field"><label>User ID</label><input type="text" id="login-id" placeholder="Your user ID" autocomplete="off"/></div>
     <div class="login-field"><label>Password</label><input type="password" id="login-pw" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
@@ -481,7 +481,7 @@ select.form-input option{background:var(--surface2);}
   <div class="modal-header"><h3 id="order-modal-title">New Order</h3><button class="btn-icon" onclick="closeModal('order-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
   <div class="modal-body"><div class="form-grid">
     <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="o-date"/></div>
-    <div class="form-group"><label class="form-label">Order No</label><input class="form-input" type="text" id="o-orderno" placeholder="e.g. PS40294323"/></div>
+    <div class="form-group"><label class="form-label">Order No</label><input class="form-input" type="text" id="o-orderno" placeholder="e.g. RS40294323"/></div>
     <div class="form-group"><label class="form-label">Task Type *</label><select class="form-input" id="o-task" onchange="onTaskChange()"><option value="">Select…</option><option>Swatch Collection</option><option>Sample Delivery</option></select></div>
     <div class="form-group"><label class="form-label">Service By *</label><select class="form-input" id="o-service"><option value="">Select task first…</option></select></div>
     <div class="form-group"><label class="form-label">Customer Name <span style="text-transform:none;color:var(--dim);">(type to search)</span></label><div class="combo"><input class="form-input" type="text" id="o-customer" placeholder="Type customer…" autocomplete="off" oninput="oComboFilter('customer',this.value)" onfocus="oComboFilter('customer',this.value)"/><div class="combo-list" id="o-customer-list"></div></div></div>
@@ -734,7 +734,7 @@ async function bootApp(){
   const allowed=allowedPagesFor(currentUser);
   const onlyOrders=allowed.length>0 && allowed.every(p=>p==='orders');
   const titleEl=document.getElementById('app-subtitle');
-  if(titleEl) titleEl.textContent=onlyOrders?'Sample Order Tracker':'FCE TA Tracker';
+  if(titleEl) titleEl.textContent=onlyOrders?'Sample Order Tracker':'Full Team Tracker';
   // Hide TA-specific UI (Approved TA pill + FCE/month top filters) for users who can't see TA pages
   const seesTA = allowed.some(p=>['dashboard','visitlog','charts','perfce','addentry','approval'].includes(p));
   const pill=document.getElementById('total-pill'); if(pill) pill.style.display=seesTA?'block':'none';
