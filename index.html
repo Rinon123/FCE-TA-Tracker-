@@ -1642,13 +1642,14 @@ function renderAnnounceBar(){
   const bar=document.getElementById('announce-bar'); if(!bar)return; bar.style.display='flex';
   const btn=document.getElementById('announce-add-btn'); if(btn) btn.style.display=isAdmin()?'':'none';
   const t=document.getElementById('announce-text');
-  const list=annVisible().slice().reverse(); // newest first
   if(_annTimer){ clearInterval(_annTimer); _annTimer=null; }
-  if(!list.length){ t.textContent='No announcements found'; t.classList.add('empty'); return; }
+  const list=annVisible().slice().reverse(); // newest first
+  if(!list.length){ t.innerHTML='No announcements found'; t.classList.add('empty'); return; }
   t.classList.remove('empty');
-  const show=i=>{ const a=list[i]; t.innerHTML=(a.audience==='logistics'?annBadge('logistics'):'')+attEsc(a.text)+(list.length>1?` <span style="color:var(--muted);font-size:11px;">(${i+1}/${list.length} · tap to view all)</span>`:''); };
-  let idx=0; show(0);
-  if(list.length>1){ _annTimer=setInterval(()=>{ idx=(idx+1)%list.length; show(idx); },5000); }
+  // Show ALL announcements the user is allowed to see, stacked (so logistics sees both their own + everyone)
+  t.innerHTML='<div style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow:auto;">'
+    + list.map(a=>`<div style="display:flex;align-items:center;gap:2px;line-height:1.45;">${annBadge(a.audience)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${attEsc(a.text)}</span></div>`).join('')
+    + '</div>';
 }
 // Admin manage view (add + delete)
 function openAnnounceModal(){
