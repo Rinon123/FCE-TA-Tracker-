@@ -240,6 +240,18 @@ select.form-input option{background:var(--surface2);}
 .announce-bar .ann-text{flex:1;color:var(--text);min-width:0;}
 .announce-bar .ann-text.empty{color:var(--muted);font-style:italic;}
 .announce-bar .ann-add{flex-shrink:0;}
+/* LED-sign neon scrolling ticker */
+.announce-bar.led{background:#070b15;border-color:#1b2a48;box-shadow:inset 0 0 22px rgba(0,0,0,.6);overflow:hidden;}
+.announce-bar.led .ann-icon{color:#ff3b3b;filter:drop-shadow(0 0 4px rgba(255,59,59,.85));}
+.ann-marquee{flex:1;min-width:0;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);}
+.ann-marquee-track{display:inline-block;white-space:nowrap;will-change:transform;animation:ann-scroll linear infinite;}
+.ann-marquee:hover .ann-marquee-track{animation-play-state:paused;}
+.ann-neon{font-weight:800;letter-spacing:.02em;font-size:15px;color:#ff3b3b;text-shadow:0 0 4px rgba(255,59,59,.95),0 0 11px rgba(255,59,59,.7),0 0 22px rgba(255,40,40,.5);}
+.ann-neon .seg-tag{color:#36e0ff;text-shadow:0 0 4px rgba(54,224,255,.95),0 0 12px rgba(54,224,255,.6);}
+.ann-neon .seg-tag.log{color:#3bff9e;text-shadow:0 0 4px rgba(59,255,158,.95),0 0 12px rgba(59,255,158,.6);}
+.ann-neon .seg-sep{color:#ffd23b;margin:0 30px;text-shadow:0 0 6px rgba(255,210,59,.85);}
+@keyframes ann-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion: reduce){.ann-marquee-track{animation:none;}}
 .announce-list-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
 .announce-list-item:last-child{border-bottom:none;}
 .announce-list-item span{flex:1;font-size:13px;}
@@ -504,10 +516,10 @@ select.form-input option{background:var(--surface2);}
 <div class="modal-overlay" id="announce-modal"><div class="modal">
   <div class="modal-header"><h3>Announcements</h3><button class="btn-icon" onclick="closeModal('announce-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
   <div class="modal-body">
-    <div class="section-hint" style="margin:0 0 12px;">These show in the bar at the top of every page for the chosen audience. <b>Everyone</b> is seen by all users; <b>Logistics</b> is seen only by logistics users (and admins).</div>
+    <div class="section-hint" style="margin:0 0 12px;">Each announcement is shown only to its audience. <b>Logistics</b> is seen only by logistics users; <b>Others</b> is seen only by FCE, Team Leader and Authorizer users. (You, as Super Admin, see both.)</div>
     <div id="announce-list"></div>
     <div id="announce-add-row" class="add-item-row" style="margin-top:10px;gap:6px;flex-wrap:wrap;">
-      <select class="form-input" id="announce-audience" style="max-width:150px;"><option value="all">Everyone</option><option value="logistics">Logistics</option></select>
+      <select class="form-input" id="announce-audience" style="max-width:230px;"><option value="all">Others (FCE / Team Leader / Authorizer)</option><option value="logistics">Logistics only</option></select>
       <input class="form-input" type="text" id="announce-input" placeholder="Type a new announcement…" style="flex:1;min-width:180px;" onkeydown="if(event.key==='Enter')addAnnouncement()"/>
       <button class="btn btn-primary btn-sm" onclick="addAnnouncement()">Add</button>
     </div>
@@ -1635,21 +1647,28 @@ function getAnnouncements(){
   const v=lsGet(ANN_KEY,[]); return (Array.isArray(v)?v:[]).map(a=>({id:a.id,text:a.text,audience:a.audience||'all',at:a.at}));
 }
 // Can the current user see an announcement with this audience?
-function annCanView(aud){ if(isAdmin())return true; const r=currentUser&&currentUser.role; if(aud==='logistics')return r==='logistics'; return true; }
+//  'logistics' -> only logistics users.  'all' (Others) -> everyone EXCEPT logistics.  Admin manages/sees both.
+function annCanView(aud){ if(isAdmin())return true; const r=currentUser&&currentUser.role; return aud==='logistics' ? r==='logistics' : r!=='logistics'; }
 function annVisible(){ return getAnnouncements().filter(a=>annCanView(a.audience)); }
-function annBadge(aud){ const log=aud==='logistics'; return `<span style="font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:20px;margin-right:8px;background:${log?'#37c2d622':'#7c6af522'};color:${log?'#37c2d6':'#9a8cff'};border:1px solid ${log?'#37c2d644':'#7c6af544'};">${log?'LOGISTICS':'EVERYONE'}</span>`; }
+function annBadge(aud){ const log=aud==='logistics'; return `<span style="font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:20px;margin-right:8px;background:${log?'#37c2d622':'#7c6af522'};color:${log?'#37c2d6':'#9a8cff'};border:1px solid ${log?'#37c2d644':'#7c6af544'};">${log?'LOGISTICS':'OTHERS'}</span>`; }
 function renderAnnounceBar(){
   const bar=document.getElementById('announce-bar'); if(!bar)return; bar.style.display='flex';
   const btn=document.getElementById('announce-add-btn'); if(btn) btn.style.display=isAdmin()?'':'none';
   const t=document.getElementById('announce-text');
   if(_annTimer){ clearInterval(_annTimer); _annTimer=null; }
   const list=annVisible().slice().reverse(); // newest first
-  if(!list.length){ t.innerHTML='No announcements found'; t.classList.add('empty'); return; }
-  t.classList.remove('empty');
-  // Show ALL announcements the user is allowed to see, stacked (so logistics sees both their own + everyone)
-  t.innerHTML='<div style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow:auto;">'
-    + list.map(a=>`<div style="display:flex;align-items:center;gap:2px;line-height:1.45;">${annBadge(a.audience)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${attEsc(a.text)}</span></div>`).join('')
-    + '</div>';
+  if(!list.length){ bar.classList.remove('led'); t.className='ann-text empty'; t.innerHTML='No announcements found'; return; }
+  // LED scrolling ticker — shows ALL announcements the user may see (logistics: their own + everyone)
+  bar.classList.add('led');
+  t.className='ann-text ann-neon';
+  const seg=a=>`<span class="seg-tag${a.audience==='logistics'?' log':''}">◉ ${a.audience==='logistics'?'LOGISTICS':'OTHERS'}</span>&nbsp;—&nbsp;${attEsc(a.text)}`;
+  let block=list.map(seg).join('<span class="seg-sep">✦</span>')+'<span class="seg-sep">✦</span>';
+  // pad short content so the loop stays gap-free
+  const plain=list.map(a=>a.text+a.audience).join('   ');
+  let reps=1; while(plain.length*reps<110) reps++;
+  let unit=''; for(let i=0;i<reps;i++) unit+=block;
+  const dur=Math.max(14, Math.round(plain.length*reps*0.32));
+  t.innerHTML=`<div class="ann-marquee"><div class="ann-marquee-track" style="animation-duration:${dur}s">${unit}${unit}</div></div>`;
 }
 // Admin manage view (add + delete)
 function openAnnounceModal(){
@@ -1683,7 +1702,7 @@ async function addAnnouncement(){
   } else {
     const l=lsGet(ANN_KEY,[]); l.push({id:rec.id,text:txt,audience,at:rec.created_at}); lsSet(ANN_KEY,l);
   }
-  inp.value=''; renderAnnounceList(false); renderAnnounceBar(); showToast('Announcement added'+(audience==='logistics'?' (Logistics).':' (Everyone).'));
+  inp.value=''; renderAnnounceList(false); renderAnnounceBar(); showToast('Announcement added'+(audience==='logistics'?' (Logistics only).':' (Others).'));
 }
 async function deleteAnnouncement(id){
   if(!isAdmin())return;
