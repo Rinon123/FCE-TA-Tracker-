@@ -1793,6 +1793,8 @@ async function dbPkUpsert(rows){ const {error}=await sb.from('sample_lines').ups
 async function dbGetTrips(){ const {data,error}=await sb.from('trip_schedule').select('*').order('trip_date',{ascending:false}).limit(3000); if(error)throw error; return data||[]; }
 async function dbInsertTrip(rows){ const {error}=await sb.from('trip_schedule').insert(rows); if(error)throw error; }
 async function dbDeleteTrip(id){ const {error}=await sb.from('trip_schedule').delete().eq('id',id); if(error)throw error; }
+async function dbUpdateTrip(id,patch){ const {error}=await sb.from('trip_schedule').update(patch).eq('id',id); if(error)throw error; }
+async function dbPkClearAll(){ const {error}=await sb.from('sample_lines').delete().neq('id','___never___'); if(error)throw error; }
 async function pkLoadTrips(force){ if(CACHE._tripsLoaded&&!force)return; try{ CACHE.trips=await dbGetTrips(); CACHE._tripsLoaded=true; }catch(e){ CACHE.trips=CACHE.trips||[]; CACHE._tripsLoaded=false; } }
 
 // ── tabs ──
@@ -1811,7 +1813,20 @@ function pkHeader(lines){
   const f=lines[0];
   const lineNos=[...new Set(lines.map(l=>l.line_no).filter(x=>x!=null&&x!==''))].sort((a,b)=>(''+a).localeCompare(''+b,undefined,{numeric:true})).join(',');
   const totalQty=lines.reduce((s,l)=>s+(parseFloat(l.qty)||0),0);
-  return {orderNo:f.order_no,shipTo:f.ship_to,shipAddr:f.ship_addr,requester:f.requester,mobile:f.requester_mobile,buyer:f.buyer,csName:f.cs_name,creationDate:f.creation_date,styleNo:f.style_no,lineNos,totalQty,lines};
+  return {orderNo:f.order_no,shipTo:f.ship_to,shipAddr:f.ship_addr,requester:f.requester,mobile:f.requester_mobile,buyer:f.buyer,csName:f.cs_name,creationDate:f.creation_date,styleNo:f.style_no,lineNos,totalQty,lines,_sel:new Set(lines.map((_,i)=>i))};
+}
+// dd/mm/yyyy from common formats (dd-mm-yyyy…, yyyy-mm-dd…, or any parseable date)
+function pkFmtDate(v){ if(v==null||v==='')return ''; const s=(''+v).trim(); let m=s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/); if(m)return m[1].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[3]; m=s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if(m)return m[3].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[1]; const d=new Date(s); if(!isNaN(d))return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); return s; }
+function pkNow(){ const d=new Date(); const dd=String(d.getDate()).padStart(2,'0'),mm=String(d.getMonth()+1).padStart(2,'0'); let h=d.getHours(); const ap=h>=12?'PM':'AM'; h=h%12||12; return dd+'/'+mm+'/'+d.getFullYear()+', '+h+':'+String(d.getMinutes()).padStart(2,'0')+' '+ap; }
+function pkLogoCropStyle(sizeCss){ const pos=lsGet('sc_print_logo_crop','left'); if(pos==='full')return 'width:auto;height:'+sizeCss+';max-width:'+sizeCss+';object-fit:contain;'; return 'width:'+sizeCss+';height:'+sizeCss+';object-fit:cover;object-position:'+pos+' center;border-radius:50%;'; }
+function pkLogoImg(big){ const l=lsGet('sc_print_logo','');
+  if(big){ // sticker bottom — round logo ONLY, ~42mm
+    if(l)return '<img src="'+l+'" style="'+pkLogoCropStyle('42mm')+'"/>';
+    return '<div style="font-weight:900;font-size:42px;letter-spacing:2px;color:#0b3b8f;border:3px solid #0b3b8f;border-radius:50%;width:42mm;height:42mm;display:flex;align-items:center;justify-content:center;">COATS</div>';
+  }
+  // header — round logo (if uploaded) + company name text
+  const img=l?'<img src="'+l+'" style="'+pkLogoCropStyle('48px')+'"/>':'';
+  return '<div style="display:flex;align-items:center;gap:9px;">'+img+'<div style="font-weight:800;font-size:17px;line-height:1.12;color:#0b3b8f;">Coats<br><span style="color:#111;font-weight:700;">Bangladesh Ltd.</span></div></div>';
 }
 
 // ── Orders / DN / Sticker ──
@@ -1846,7 +1861,9 @@ function pkRenderOrderView(){
   const v=document.getElementById('pk-order-view'); if(!v)return;
   if(!pkOrder){ v.innerHTML='<div class="card"><div style="padding:18px;color:var(--muted);">Search an order above to view its delivery note and print the DN Copy / Sticker.</div></div>'; return; }
   const o=pkOrder;
-  const rows=o.lines.map(l=>`<tr><td>${attEsc(l.line_no)}</td><td>${attEsc(l.coats_brand_tex)}</td><td>${attEsc(l.product_code)}</td><td>${attEsc(l.shade)}</td><td>${attEsc(l.qty)}</td><td>${attEsc(l.style_no)}</td><td style="font-size:12px;">${attEsc(l.remarks)}</td></tr>`).join('');
+  const sel=o._sel||new Set();
+  const rows=o.lines.map((l,i)=>`<tr><td style="text-align:center;"><input type="checkbox" ${sel.has(i)?'checked':''} onchange="pkToggleLine(${i})"/></td><td>${attEsc(l.line_no)}</td><td>${attEsc(l.coats_brand_tex)}</td><td>${attEsc(l.product_code)}</td><td>${attEsc(l.shade)}</td><td>${attEsc(l.qty)}</td><td>${attEsc(l.style_no)}</td><td style="font-size:12px;">${attEsc(l.remarks)}</td></tr>`).join('');
+  const allChecked=o.lines.length&&sel.size===o.lines.length;
   v.innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Order ${attEsc(o.orderNo)}</div><div class="card-sub">${attEsc(o.shipTo)} · ${attEsc(o.buyer||'')}</div></div>
     <div class="card-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="btn btn-ghost btn-sm" onclick="pkPrintDN()">🖨 DN Copy</button>
@@ -1854,14 +1871,18 @@ function pkRenderOrderView(){
       <button class="btn btn-primary btn-sm" onclick="pkAddToTrip()">Add to Trip</button>
     </div></div>
     <div style="padding:0 16px 8px;"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 18px;font-size:13px;padding:8px 0;">
-      <div><span style="color:var(--muted);">Creation:</span> ${attEsc(o.creationDate)}</div>
+      <div><span style="color:var(--muted);">Creation:</span> ${pkFmtDate(o.creationDate)}</div>
       <div><span style="color:var(--muted);">Requester:</span> ${attEsc(o.requester)} (${attEsc(o.mobile)})</div>
       <div><span style="color:var(--muted);">Customer Service:</span> ${attEsc(o.csName)}</div>
       <div><span style="color:var(--muted);">Lines:</span> ${attEsc(o.lineNos)} · Qty ${o.totalQty}</div>
       <div style="grid-column:1/-1;"><span style="color:var(--muted);">Address:</span> ${attEsc(o.shipAddr)}</div>
     </div></div>
-    <div style="overflow:auto;"><table><thead><tr><th>Line</th><th>COATS Brand/Tex</th><th>Product</th><th>Shade</th><th>Qty</th><th>Style/Ref</th><th>Remarks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    <div style="padding:0 16px 8px;font-size:12px;color:var(--accent2);" id="pk-sel-count">Tick the lines to include in the DN &amp; Sticker — ${sel.size} of ${o.lines.length} selected.</div>
+    <div style="overflow:auto;"><table><thead><tr><th style="width:30px;text-align:center;"><input type="checkbox" ${allChecked?'checked':''} onchange="pkToggleAllLines(this.checked)" title="Select all"/></th><th>Line</th><th>COATS Brand/Tex</th><th>Product</th><th>Shade</th><th>Qty</th><th>Style/Ref</th><th>Remarks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
+function pkToggleLine(i){ if(!pkOrder)return; const s=pkOrder._sel; if(s.has(i))s.delete(i); else s.add(i); pkRenderOrderView(); }
+function pkToggleAllLines(on){ if(!pkOrder)return; pkOrder._sel=new Set(on?pkOrder.lines.map((_,i)=>i):[]); pkRenderOrderView(); }
+function pkSelectedLines(){ if(!pkOrder)return []; const s=pkOrder._sel; return pkOrder.lines.filter((_,i)=>s.has(i)); }
 function pkAddToTrip(){ if(!pkOrder)return; pkPendingTripOrder=pkOrder.orderNo; pkTab='trip'; pkRender(); showToast('Order ready — set carton qty and add it to the trip.'); }
 
 // ── Trip Schedule builder ──
@@ -1891,7 +1912,7 @@ function pkRenderTripRows(){
   const rows=(CACHE.trips||[]).filter(t=>t.trip_date===pkTripDate&&(t.road||'')===pkTripRoad).sort((a,b)=>(a.serial||0)-(b.serial||0));
   let tq=0,tc=0;
   const body=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return `<tr><td>${i+1}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td><button class="btn btn-reject btn-sm" onclick="pkTripDelete('${t.id}')">Remove</button></td></tr>`;}).join('')||`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">No orders added yet.</td></tr>`;
-  box.innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Trip — ${attEsc(pkTripDate)} · ${attEsc(pkTripRoad)}</div><div class="card-sub">Total Qty ${tq} · Cartons ${tc}</div></div><div class="card-actions"><button class="btn btn-ghost btn-sm" onclick="pkPrintTrip()">🖨 Print Trip</button></div></div>
+  box.innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Trip — ${fmtDate(pkTripDate)} · ${attEsc(pkTripRoad)}</div><div class="card-sub">Total Qty ${tq} · Cartons ${tc}</div></div><div class="card-actions"><button class="btn btn-ghost btn-sm" onclick="pkPrintTrip()">🖨 Print Trip</button></div></div>
    <div style="overflow:auto;"><table><thead><tr><th>Serial</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Qty</th><th>Cartons</th><th></th></tr></thead><tbody>${body}</tbody></table></div></div>`;
 }
 async function pkTripAdd(){
@@ -1919,7 +1940,7 @@ function pkRenderList(){
       <input class="filter-sel" type="date" id="pk-list-date" onchange="pkRenderListRows()" style="width:150px;"/>
       <button class="btn btn-ghost btn-sm" onclick="pkExportList()">Download CSV</button>
     </div></div>
-    <div style="overflow:auto;"><table><thead><tr><th>Serial</th><th>Date</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Total Qty</th><th>Carton Qty</th><th>Road</th></tr></thead><tbody id="pk-list-rows"></tbody></table></div></div>`;
+    <div style="overflow:auto;"><table><thead><tr><th>Serial</th><th>Date</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Total Qty</th><th>Carton Qty</th><th>Road</th><th>Actions</th></tr></thead><tbody id="pk-list-rows"></tbody></table></div></div>`;
   pkRenderListRows();
 }
 function pkListFiltered(){
@@ -1930,24 +1951,81 @@ function pkListFiltered(){
 function pkRenderListRows(){
   const tb=document.getElementById('pk-list-rows'); if(!tb)return;
   const rows=pkListFiltered();
-  tb.innerHTML=rows.map(t=>`<tr><td>${attEsc(t.serial)}</td><td style="white-space:nowrap;">${attEsc(t.trip_date)}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td>${attEsc(t.road)}</td></tr>`).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:16px;">No trips yet.</td></tr>`;
+  tb.innerHTML=rows.map(t=>`<tr><td>${attEsc(t.serial)}</td><td style="white-space:nowrap;">${fmtDate(t.trip_date)}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td>${attEsc(t.road)}</td><td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="pkListEdit('${t.id}')">Edit</button> <button class="btn btn-reject btn-sm" onclick="pkListDelete('${t.id}')">Delete</button></td></tr>`).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:16px;">No trips yet.</td></tr>`;
+}
+async function pkListEdit(id){
+  const t=(CACHE.trips||[]).find(x=>x.id===id); if(!t)return;
+  const c=prompt('Carton Qty for order '+t.order_no+':', t.carton_qty); if(c===null)return;
+  const carton=parseInt(c,10); if(isNaN(carton)){ showToast('Enter a number.','err'); return; }
+  const ln=prompt('Line Nos (comma separated):', t.line_nos||''); if(ln===null)return;
+  try{ await dbUpdateTrip(id,{carton_qty:carton,line_nos:ln.trim()}); await pkLoadTrips(true); pkRenderListRows(); showToast('Trip entry updated.'); }
+  catch(e){ showToast('Update failed: '+e.message,'err'); }
+}
+async function pkListDelete(id){
+  if(!confirm('Delete this trip entry permanently?'))return;
+  try{ await dbDeleteTrip(id); await pkLoadTrips(true); pkRenderListRows(); showToast('Trip entry deleted.'); }
+  catch(e){ showToast('Delete failed: '+e.message,'err'); }
 }
 function pkExportList(){
   const rows=pkListFiltered();
   const header='Serial,Date,Ship to Party,Order No,Line Nos,Total Qty,Carton Qty,Road\n';
-  const csv=rows.map(t=>[t.serial,t.trip_date,t.ship_to,t.order_no,t.line_nos,t.total_qty,t.carton_qty,t.road].map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const csv=rows.map(t=>[t.serial,fmtDate(t.trip_date),t.ship_to,t.order_no,t.line_nos,t.total_qty,t.carton_qty,t.road].map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([header+csv],{type:'text/csv'})); a.download='Trip_Schedule_List.csv'; a.click();
 }
 
 // ── Import ──
 function pkRenderImport(){
+  const hasLogo=!!lsGet('sc_print_logo','');
   document.getElementById('pk-body').innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Import Sample Order Data</div><div class="card-sub">Upload your Coats export (.xlsx / .xlsm / .csv). New & updated order lines are merged in.</div></div></div>
    <div style="padding:16px;">
      <input type="file" id="pk-file" accept=".xlsx,.xlsm,.csv" class="form-input" style="max-width:360px;display:inline-block;"/>
      <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="pkDoImport()">Import</button>
      <div id="pk-import-status" style="margin-top:12px;font-size:13px;color:var(--muted);"></div>
-     <div style="margin-top:14px;font-size:12px;color:var(--muted);line-height:1.6;">Matches your <b>DN RAW Sheet</b> columns (any order): Ship to Party Name · Ship to Party Address · Requester · Requester Mobile · Business Principal Name · Customer Order Ref. No · Customer Reference Line · Coats Material No. · Brand · Size/Tkt · Shade Code · Ordered Qty · Creation Date · Customer Service Executive · StyleNo/ProductionNo · Comments/Remarks · COATS BRAND/ Tex · PRODUCT CODE · Customer Service Name.<br>A first full import of many rows can take a minute — keep the tab open.</div>
+     <div style="margin-top:14px;font-size:12px;color:var(--muted);line-height:1.6;">Matches your <b>DN RAW Sheet</b> columns (any order): Ship to Party Name · Ship to Party Address · Requester · Requester Mobile · Business Principal Name · Customer Order Ref. No · Customer Reference Line No. · Coats Material No. · Brand · Size/Tkt · Shade Code · Ordered Qty · Creation Date · Customer Service Executive · StyleNo/ProductionNo · Comments/Remarks · COATS BRAND/ Tex · PRODUCT CODE · Customer Service Name.<br>A first full import of many rows can take a minute — keep the tab open. Duplicate rows are merged automatically.</div>
+
+     <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
+       <div class="form-label">Company logo for printed DN &amp; Sticker (optional)</div>
+       <input type="file" id="pk-logo-file" accept="image/*" class="form-input" style="max-width:300px;display:inline-block;"/>
+       <button class="btn btn-ghost btn-sm" onclick="pkSaveLogo()">Save logo</button>
+       <button class="btn btn-ghost btn-sm" onclick="pkClearLogo()">Remove</button>
+       <span id="pk-logo-state" style="font-size:12px;color:var(--muted);margin-left:8px;">${hasLogo?'Logo set on this device.':'No logo set — prints show a text header.'}</span>
+       <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+         <span style="font-size:12px;color:var(--muted);">If your image has the round logo + words, choose where the round logo sits so only the circle is used:</span>
+         <select class="filter-sel" id="pk-logo-crop" onchange="pkSetLogoCrop(this.value)">
+           <option value="left">Round logo is on the LEFT</option>
+           <option value="right">Round logo is on the RIGHT</option>
+           <option value="full">Use the WHOLE image</option>
+         </select>
+       </div>
+       <div style="margin-top:10px;display:flex;align-items:center;gap:14px;">
+         <span style="font-size:12px;color:var(--muted);">Sticker logo preview:</span>
+         <div id="pk-logo-preview" style="width:70px;height:70px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--border);border-radius:8px;overflow:hidden;"></div>
+       </div>
+     </div>
+
+     <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
+       <div class="form-label" style="color:var(--red);">Danger zone</div>
+       <button class="btn btn-reject btn-sm" onclick="pkClearImport()">Clear ALL imported data</button>
+       <span style="font-size:12px;color:var(--muted);margin-left:8px;">Use this to wipe the old data, then import a fresh full file so only the latest shows.</span>
+     </div>
    </div></div>`;
+  pkLogoPreview();
+}
+function pkSaveLogo(){
+  const fi=document.getElementById('pk-logo-file'); const f=fi&&fi.files[0]; if(!f){ showToast('Choose an image first.','err'); return; }
+  const r=new FileReader();
+  r.onload=()=>{ const img=new Image(); img.onload=()=>{ const max=420; let w=img.width,h=img.height; if(w>max){h=Math.round(h*max/w);w=max;} const c=document.createElement('canvas'); c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); let url; try{url=c.toDataURL('image/png');}catch(_){url=r.result;} lsSet('sc_print_logo',url); const s=document.getElementById('pk-logo-state'); if(s)s.textContent='Logo saved on this device.'; pkLogoPreview(); showToast('Print logo saved.'); }; img.onerror=()=>{ lsSet('sc_print_logo',r.result); pkLogoPreview(); showToast('Logo saved.'); }; img.src=r.result; };
+  r.readAsDataURL(f);
+}
+function pkClearLogo(){ localStorage.removeItem('sc_print_logo'); const s=document.getElementById('pk-logo-state'); if(s)s.textContent='No logo set — prints show a text header.'; pkLogoPreview(); showToast('Logo removed.'); }
+function pkSetLogoCrop(pos){ lsSet('sc_print_logo_crop',pos); pkLogoPreview(); showToast('Logo crop updated — re-print to see it.'); }
+function pkLogoPreview(){ const sel=document.getElementById('pk-logo-crop'); if(sel)sel.value=lsGet('sc_print_logo_crop','left'); const box=document.getElementById('pk-logo-preview'); if(!box)return; const l=lsGet('sc_print_logo',''); box.innerHTML = l ? '<img src="'+l+'" style="'+pkLogoCropStyle('64px')+'"/>' : '<span style="font-size:10px;color:var(--muted);">no logo</span>'; }
+async function pkClearImport(){
+  if(!isAdmin()){ showToast('Only the Super Admin can clear data.','err'); return; }
+  if(!confirm('Delete ALL imported sample-order data? This cannot be undone — you will import a fresh file afterwards.'))return;
+  const st=document.getElementById('pk-import-status'); if(st)st.textContent='Clearing…';
+  try{ await dbPkClearAll(); pkOrder=null; pkResults=[]; if(st)st.innerHTML='<span style="color:var(--green);font-weight:600;">All imported data cleared. Now upload a fresh file above.</span>'; showToast('Imported data cleared.'); }
+  catch(e){ if(st)st.innerHTML='<span style="color:var(--red);">Clear failed: '+attEsc(e.message)+'</span>'; }
 }
 function pkLoadSheetJS(){ return new Promise((res,rej)=>{ if(window.XLSX)return res(); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=()=>res(); s.onerror=()=>rej(new Error('Could not load the spreadsheet reader (check internet).')); document.head.appendChild(s); }); }
 const PK_HMAP=[
@@ -2022,21 +2100,57 @@ function pkPrintWindow(title, bodyHtml, pageCss){
 }
 function pkPrintDN(){
   if(!pkOrder)return; const o=pkOrder;
-  const rows=o.lines.map(l=>'<tr><td>'+attEsc(l.line_no)+'</td><td>'+attEsc(l.coats_brand_tex)+'</td><td>'+attEsc(l.product_code)+'</td><td>'+attEsc(l.shade)+'</td><td>'+attEsc(l.qty)+'</td><td>'+attEsc(l.style_no)+'</td><td>'+attEsc(l.remarks)+'</td></tr>').join('');
-  const body='<h2>Delivery Note — DN Copy</h2><div class="kv">'
-    +'<b>Order No:</b><span>'+attEsc(o.orderNo)+'</span><b>Creation Date:</b><span>'+attEsc(o.creationDate)+'</span>'
-    +'<b>Brand / Buyer:</b><span>'+attEsc(o.buyer)+'</span><b>Requester Name:</b><span>'+attEsc(o.requester)+'</span>'
-    +'<b>Requester Mobile:</b><span>'+attEsc(o.mobile)+'</span><b>Customer Service:</b><span>'+attEsc(o.csName)+'</span>'
-    +'<b>Ship To Party:</b><span>'+attEsc(o.shipTo)+'</span><b>Ship To Address:</b><span>'+attEsc(o.shipAddr)+'</span></div>'
-    +'<table><thead><tr><th>Line No</th><th>COATS Brand / Tex</th><th>Product Code</th><th>Shade Code</th><th>Qty</th><th>Style / Ref No</th><th>Comments / Remarks</th></tr></thead><tbody>'+rows+'</tbody></table>'
-    +'<p style="font-size:12px;margin-top:10px;">Total lines: '+o.lines.length+' &nbsp;·&nbsp; Total Qty: '+o.totalQty+'</p>';
-  pkPrintWindow('DN Copy '+o.orderNo, body);
+  const sel=pkSelectedLines(); if(!sel.length){ showToast('Select at least one line to print.','err'); return; }
+  const rows=sel.map(l=>'<tr><td style="text-align:center;">'+attEsc(l.line_no)+'</td><td>'+attEsc(l.coats_brand_tex)+'</td><td>'+attEsc(l.product_code)+'</td><td>'+attEsc(l.shade)+'</td><td style="text-align:center;">'+attEsc(l.qty)+'</td><td>'+attEsc(l.style_no)+'</td><td>'+attEsc(l.remarks)+'</td></tr>').join('');
+  const body=''
+   +'<div class="so-hdr"><div class="lg">'+pkLogoImg(false)+'</div><div class="ttl">Sample Order - DN Copy</div><div class="lg"></div></div>'
+   +'<table class="info">'
+   +'<tr><td class="k">Order No</td><td><b>'+attEsc(o.orderNo)+'</b></td><td class="k">Customer Service Name</td><td>'+attEsc(o.csName)+'</td></tr>'
+   +'<tr><td class="k">Creation Date</td><td>'+pkFmtDate(o.creationDate)+'</td><td class="k">Ship to Party Name</td><td>'+attEsc(o.shipTo)+'</td></tr>'
+   +'<tr><td class="k">Brand / Buyer</td><td>'+attEsc(o.buyer)+'</td><td class="k" rowspan="3">Ship to Party Address</td><td rowspan="3">'+attEsc(o.shipAddr)+'</td></tr>'
+   +'<tr><td class="k">Requester Mobile No</td><td>'+attEsc(o.mobile)+'</td></tr>'
+   +'<tr><td class="k">Requester Person Name</td><td>'+attEsc(o.requester)+'</td></tr>'
+   +'</table>'
+   +'<table class="lines"><thead><tr><th>Line No</th><th>COATS BRAND/Tex</th><th>PRODUCT CODE</th><th>SHADE CODE</th><th>QTY</th><th>STYLE/REF NO</th><th>COMMENTS / REMARKS</th></tr></thead><tbody>'+rows+'</tbody></table>'
+   +'<div class="sign"><div class="box">Receiver\'s Signature &amp; Date</div></div>';
+  const css='@page{size:A4 landscape;margin:10mm;}'
+   +'.so-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}'
+   +'.so-hdr .lg{flex:1;}.so-hdr .ttl{flex:1;text-align:center;font-size:22px;font-weight:bold;letter-spacing:.5px;}'
+   +'.info{border-collapse:collapse;width:100%;margin-bottom:12px;}'
+   +'.info td{border:1px solid #000;padding:6px 9px;font-size:12px;}'
+   +'.info td.k{font-weight:bold;background:#eef1f5;width:15%;}'
+   +'.lines{border-collapse:collapse;width:100%;}'
+   +'.lines th,.lines td{border:1px solid #000;padding:5px 7px;font-size:11px;}'
+   +'.lines th{background:#1f3a5f;color:#fff;}'
+   +'.sign{display:flex;justify-content:flex-end;margin-top:34px;}'
+   +'.sign .box{border:1px solid #000;padding:30px 34px 8px;min-width:240px;text-align:center;font-size:12px;color:#444;}';
+  pkPrintWindow('Sample Order '+o.orderNo, body, css);
 }
 function pkPrintSticker(){
   if(!pkOrder)return; const o=pkOrder;
-  const r=(l,v)=>'<div class="row"><span class="l">'+l+'</span><span class="v">'+attEsc(v)+'</span></div>';
-  const body='<div class="sticker">'+r('Ship to Party Name:',o.shipTo)+r('Requester Name:',o.requester)+r('Buyer Name:',o.buyer)+r('Customer Order Ref. No:',o.orderNo)+r('Lines No:',o.lineNos)+r('Requester Mobile No:',o.mobile)+r('Style No:',o.styleNo)+'</div>';
-  const css='@page{margin:8mm;}.sticker{border:2px solid #000;border-radius:6px;padding:14px 16px;width:120mm;}.sticker .row{display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed #999;font-size:15px;}.sticker .row:last-child{border-bottom:none;}.sticker .l{font-weight:bold;min-width:60mm;}.sticker .v{font-weight:600;}';
+  const sel=pkSelectedLines();
+  const lineNos=(sel.length?sel:o.lines).map(l=>l.line_no).filter(x=>x!=null&&x!=='').join(',');
+  const row=(l,v)=>'<tr><td class="l">'+l+'</td><td class="v">'+attEsc(v||'')+'</td></tr>';
+  const body=''
+   +'<div class="hdr"><div class="brand">'+pkLogoImg(false)+'</div><div class="dt">'+pkNow()+'</div></div>'
+   +'<table class="st">'
+   +row('Ship to Party Name:',o.shipTo)
+   +row('Requester Name:',o.requester)
+   +row('Buyer Name:',o.buyer)
+   +row('Customer Order Ref. No:',o.orderNo)
+   +row('Lines No:',lineNos)
+   +row('Requester Mobile No:',o.mobile)
+   +row('Style No:',o.styleNo)
+   +'</table>'
+   +'<div class="biglogo">'+pkLogoImg(true)+'</div>';
+  const css='@page{size:150mm 100mm;margin:5mm;}body{margin:5mm;}'
+   +'.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}'
+   +'.hdr .dt{font-size:11px;font-weight:600;}'
+   +'.st{border-collapse:collapse;width:100%;}'
+   +'.st td{border:1px solid #000;padding:3px 8px;font-size:12px;}'
+   +'.st td.l{font-weight:bold;width:44%;background:#f4f4f4;}'
+   +'.st td.v{font-weight:600;}'
+   +'.biglogo{text-align:center;margin-top:8px;}';
   pkPrintWindow('Sticker '+o.orderNo, body, css);
 }
 function pkPrintTrip(){
@@ -2045,7 +2159,7 @@ function pkPrintTrip(){
   if(!rows.length){ showToast('No rows in this trip yet.','err'); return; }
   let tq=0,tc=0;
   const tr=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return '<tr><td>'+(i+1)+'</td><td>'+attEsc(t.ship_to)+'</td><td>'+attEsc(t.order_no)+'</td><td>'+attEsc(t.line_nos)+'</td><td>'+attEsc(t.total_qty)+'</td><td>'+attEsc(t.carton_qty)+'</td></tr>';}).join('');
-  const body='<h2>Sampling Trip Schedule</h2><div class="kv"><b>Date:</b><span>'+attEsc(date)+'</span><b>Road Name:</b><span>'+attEsc(road||'—')+'</span></div>'
+  const body='<h2>Sampling Trip Schedule</h2><div class="kv"><b>Date:</b><span>'+fmtDate(date)+'</span><b>Road Name:</b><span>'+attEsc(road||'—')+'</span></div>'
     +'<table><thead><tr><th>Serial</th><th>Ship to Party Name</th><th>Sample Order No</th><th>Line Nos</th><th>Ordered Qty</th><th>Carton Qty</th></tr></thead><tbody>'+tr
     +'<tr><td colspan="4" style="text-align:right;font-weight:bold;">Total:</td><td style="font-weight:bold;">'+tq+'</td><td style="font-weight:bold;">'+tc+'</td></tr></tbody></table>';
   pkPrintWindow('Trip '+date+' '+(road||''), body);
