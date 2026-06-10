@@ -2004,6 +2004,24 @@ function pkRenderImport(){
      </div>
 
      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
+       <div class="form-label">Print settings</div>
+       <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-top:6px;">
+         <div><div style="font-size:12px;color:var(--muted);margin-bottom:3px;">DN orientation</div>
+           <select class="filter-sel" onchange="pkSetSetting('sc_dn_orient',this.value)">
+             <option value="portrait" ${pkDnOrient()==='portrait'?'selected':''}>Portrait</option>
+             <option value="landscape" ${pkDnOrient()==='landscape'?'selected':''}>Landscape</option>
+           </select>
+         </div>
+         <div><div style="font-size:12px;color:var(--muted);margin-bottom:3px;">Sticker width (mm)</div>
+           <input class="form-input" type="number" min="20" value="${pkStickerW()}" style="width:110px;" onchange="pkSetSetting('sc_sticker_w',this.value)"/></div>
+         <div><div style="font-size:12px;color:var(--muted);margin-bottom:3px;">Sticker height (mm)</div>
+           <input class="form-input" type="number" min="20" value="${pkStickerH()}" style="width:110px;" onchange="pkSetSetting('sc_sticker_h',this.value)"/></div>
+         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" ${pkStickerBarcode()?'checked':''} onchange="pkSetSetting('sc_sticker_barcode',this.checked?'1':'0')"/> Print barcode on sticker</label>
+       </div>
+       <div style="font-size:12px;color:var(--muted);margin-top:6px;">Barcode encodes the Order No (and the line no when you print a single line). Set sticker size to your label — e.g. 100 × 150 for portrait, 150 × 100 for landscape.</div>
+     </div>
+
+     <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
        <div class="form-label" style="color:var(--red);">Danger zone</div>
        <button class="btn btn-reject btn-sm" onclick="pkClearImport()">Clear ALL imported data</button>
        <span style="font-size:12px;color:var(--muted);margin-left:8px;">Use this to wipe the old data, then import a fresh full file so only the latest shows.</span>
@@ -2028,6 +2046,13 @@ async function pkClearImport(){
   catch(e){ if(st)st.innerHTML='<span style="color:var(--red);">Clear failed: '+attEsc(e.message)+'</span>'; }
 }
 function pkLoadSheetJS(){ return new Promise((res,rej)=>{ if(window.XLSX)return res(); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=()=>res(); s.onerror=()=>rej(new Error('Could not load the spreadsheet reader (check internet).')); document.head.appendChild(s); }); }
+function pkSetSetting(key,val){ lsSet(key,val); showToast('Print setting saved.'); }
+function pkLoadBarcode(){ return new Promise((res,rej)=>{ if(window.JsBarcode)return res(); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js'; s.onload=()=>res(); s.onerror=()=>rej(new Error('barcode lib failed')); document.head.appendChild(s); }); }
+function pkDnOrient(){ return lsGet('sc_dn_orient','portrait'); }
+function pkStickerW(){ return parseInt(lsGet('sc_sticker_w',100),10)||100; }
+function pkStickerH(){ return parseInt(lsGet('sc_sticker_h',150),10)||150; }
+function pkStickerBarcode(){ return lsGet('sc_sticker_barcode','1')==='1'; }
+function pkMakeBarcode(value){ try{ const c=document.createElement('canvas'); JsBarcode(c,value,{format:'CODE128',displayValue:true,fontSize:16,height:46,margin:4}); return c.toDataURL('image/png'); }catch(e){ return ''; } }
 const PK_HMAP=[
  [['ship to party name'],'ship_to'],[['ship to party address'],'ship_addr'],
  [['requester mobile','requester mobile no'],'requester_mobile'],[['requester','requester name'],'requester'],
@@ -2113,7 +2138,7 @@ function pkPrintDN(){
    +'</table>'
    +'<table class="lines"><thead><tr><th>Line No</th><th>COATS BRAND/Tex</th><th>PRODUCT CODE</th><th>SHADE CODE</th><th>QTY</th><th>STYLE/REF NO</th><th>COMMENTS / REMARKS</th></tr></thead><tbody>'+rows+'</tbody></table>'
    +'<div class="sign"><div class="box">Receiver\'s Signature &amp; Date</div></div>';
-  const css='@page{size:A4 landscape;margin:10mm;}'
+  const css='@page{size:A4 '+pkDnOrient()+';margin:10mm;}'
    +'.so-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}'
    +'.so-hdr .lg{flex:1;}.so-hdr .ttl{flex:1;text-align:center;font-size:22px;font-weight:bold;letter-spacing:.5px;}'
    +'.info{border-collapse:collapse;width:100%;margin-bottom:12px;}'
@@ -2126,10 +2151,16 @@ function pkPrintDN(){
    +'.sign .box{border:1px solid #000;padding:30px 34px 8px;min-width:240px;text-align:center;font-size:12px;color:#444;}';
   pkPrintWindow('Sample Order '+o.orderNo, body, css);
 }
-function pkPrintSticker(){
+async function pkPrintSticker(){
   if(!pkOrder)return; const o=pkOrder;
   const sel=pkSelectedLines();
-  const lineNos=(sel.length?sel:o.lines).map(l=>l.line_no).filter(x=>x!=null&&x!=='').join(',');
+  const usedLines=(sel.length?sel:o.lines);
+  const lineNos=usedLines.map(l=>l.line_no).filter(x=>x!=null&&x!=='').join(',');
+  // barcode value: order no, plus the line no when exactly one line is selected
+  let barImg='';
+  if(pkStickerBarcode()){
+    try{ await pkLoadBarcode(); const val=o.orderNo+(usedLines.length===1?('-'+usedLines[0].line_no):''); const d=pkMakeBarcode(val); if(d)barImg='<div class="bc"><img src="'+d+'"/></div>'; }catch(e){}
+  }
   const row=(l,v)=>'<tr><td class="l">'+l+'</td><td class="v">'+attEsc(v||'')+'</td></tr>';
   const body=''
    +'<div class="hdr"><div class="brand">'+pkLogoImg(false)+'</div><div class="dt">'+pkNow()+'</div></div>'
@@ -2142,14 +2173,17 @@ function pkPrintSticker(){
    +row('Requester Mobile No:',o.mobile)
    +row('Style No:',o.styleNo)
    +'</table>'
+   +barImg
    +'<div class="biglogo">'+pkLogoImg(true)+'</div>';
-  const css='@page{size:150mm 100mm;margin:5mm;}body{margin:5mm;}'
-   +'.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}'
-   +'.hdr .dt{font-size:11px;font-weight:600;}'
+  const w=pkStickerW(), h=pkStickerH();
+  const css='@page{size:'+w+'mm '+h+'mm;margin:4mm;}body{margin:4mm;}'
+   +'.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}'
+   +'.hdr .dt{font-size:10px;font-weight:600;}'
    +'.st{border-collapse:collapse;width:100%;}'
-   +'.st td{border:1px solid #000;padding:3px 8px;font-size:12px;}'
+   +'.st td{border:1px solid #000;padding:3px 7px;font-size:11px;}'
    +'.st td.l{font-weight:bold;width:44%;background:#f4f4f4;}'
    +'.st td.v{font-weight:600;}'
+   +'.bc{text-align:center;margin-top:8px;}.bc img{max-width:80%;height:auto;}'
    +'.biglogo{text-align:center;margin-top:8px;}';
   pkPrintWindow('Sticker '+o.orderNo, body, css);
 }
