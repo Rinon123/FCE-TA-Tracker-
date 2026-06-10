@@ -1955,7 +1955,7 @@ const PK_HMAP=[
  [['requester mobile','requester mobile no'],'requester_mobile'],[['requester','requester name'],'requester'],
  [['business principal name','buyer','brand/buyer','buyer name'],'buyer'],
  [['customer order ref. no','customer order ref no','order no','sample order no'],'order_no'],
- [['customer reference line','line no','line','lines no'],'line_no'],
+ [['customer reference line','customer reference line no.','customer reference line no','line no','line','lines no'],'line_no'],
  [['coats material no.','coats material no','material no'],'material_no'],
  [['brand'],'brand'],[['size/tkt','size'],'size_tkt'],[['shade code','shade'],'shade'],
  [['ordered qty','qty','ordered quantity'],'qty'],[['creation date'],'creation_date'],
@@ -1964,7 +1964,7 @@ const PK_HMAP=[
  [['product code'],'product_code'],[['customer service name'],'cs_name'],
 ];
 function pkNorm(s){ return (''+(s==null?'':s)).trim().toLowerCase().replace(/\s+/g,' '); }
-function pkFieldFor(header){ const h=pkNorm(header); for(const [keys,field] of PK_HMAP){ if(keys.includes(h))return field; } return null; }
+function pkFieldFor(header){ const h=pkNorm(header); const h2=h.replace(/[.\s]+$/,'').replace(/\.$/,''); for(const [keys,field] of PK_HMAP){ if(keys.includes(h)||keys.includes(h2)||keys.some(k=>k.replace(/[.\s]+$/,'')===h2))return field; } return null; }
 async function pkDoImport(){
   const fi=document.getElementById('pk-file'); const f=fi&&fi.files[0];
   const st=document.getElementById('pk-import-status');
