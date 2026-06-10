@@ -1974,14 +1974,20 @@ async function pkDoImport(){
     await pkLoadSheetJS();
     st.textContent='Reading file…';
     const buf=await f.arrayBuffer();
-    const wb=XLSX.read(buf,{type:'array'});
+    let wb;
+    if(/\.csv$/i.test(f.name)){
+      let text; try{ text=new TextDecoder('windows-1252').decode(buf); }catch(_){ text=new TextDecoder('utf-8').decode(buf); }
+      wb=XLSX.read(text,{type:'string'});
+    } else {
+      wb=XLSX.read(buf,{type:'array'});
+    }
     const sheetName=wb.SheetNames.find(n=>/raw/i.test(n))||wb.SheetNames[0];
     const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
     let hdrIdx=aoa.findIndex(r=>{ const set=r.map(pkNorm); return set.some(x=>x.includes('order ref')||x==='order no'||x==='sample order no')&&set.some(x=>x.includes('ship to party name')); });
     if(hdrIdx<0)hdrIdx=0;
     const headers=(aoa[hdrIdx]||[]).map(pkFieldFor);
     if(!headers.includes('order_no')){ st.innerHTML='<span style="color:var(--red);">Could not find a "Customer Order Ref. No" column. Check the file headers.</span>'; return; }
-    const recs=[];
+    const byId={};
     for(let i=hdrIdx+1;i<aoa.length;i++){
       const row=aoa[i]||[]; const o={};
       headers.forEach((field,c)=>{ if(field)o[field]=row[c]; });
@@ -1992,8 +1998,9 @@ async function pkDoImport(){
       if(o.creation_date instanceof Date)o.creation_date=o.creation_date.toISOString();
       else if(o.creation_date!=null)o.creation_date=(''+o.creation_date).trim();
       o.id=[o.order_no,o.line_no,(o.shade||''),(o.material_no||'')].join('|');
-      recs.push(o);
+      byId[o.id]=o; // de-duplicate: identical keys collapse to one row
     }
+    const recs=Object.values(byId);
     if(!recs.length){ st.innerHTML='<span style="color:var(--red);">No data rows found in the file.</span>'; return; }
     let done=0; const batch=400;
     for(let i=0;i<recs.length;i+=batch){ await dbPkUpsert(recs.slice(i,i+batch)); done+=Math.min(batch,recs.length-i); st.textContent=`Imported ${done} / ${recs.length}…`; }
