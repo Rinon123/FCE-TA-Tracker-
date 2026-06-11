@@ -446,6 +446,7 @@ select.form-input option{background:var(--surface2);}
         <button class="att-tab active" data-pk="orders" onclick="pkSwitch('orders',this)">Orders · DN · Sticker</button>
         <button class="att-tab" data-pk="trip" onclick="pkSwitch('trip',this)">Trip Schedule</button>
         <button class="att-tab" data-pk="list" onclick="pkSwitch('list',this)">Trip List</button>
+        <button class="att-tab" data-pk="returns" onclick="pkSwitch('returns',this)">Returns</button>
         <button class="att-tab" data-pk="import" onclick="pkSwitch('import',this)">Import Data</button>
       </div>
       <div id="pk-body"></div>
@@ -1794,6 +1795,7 @@ function attRenderLeaveSection(){
 //  sample_lines + trip_schedule live in Supabase (run SAMPLE_PACKING_SETUP.sql)
 // ═══════════════════════════════════════════════════════════════
 let pkTab='orders', pkOrder=null, pkResults=[], pkTripDate=null, pkTripRoad='', pkPendingTripOrder='';
+let pkTripSel=new Set(), pkListSel=new Set(), pkListKind='';
 
 // ── DB ──
 async function dbPkLookup(orderNo){ const {data,error}=await sb.from('sample_lines').select('*').eq('order_no',orderNo); if(error)throw error; return data||[]; }
@@ -1814,6 +1816,7 @@ async function pkRender(){
   if(pkTab==='orders')pkRenderOrders();
   else if(pkTab==='trip')pkRenderTrip();
   else if(pkTab==='list')pkRenderList();
+  else if(pkTab==='returns')pkRenderReturns();
   else pkRenderImport();
 }
 
@@ -1878,6 +1881,7 @@ function pkRenderOrderView(){
       <button class="btn btn-ghost btn-sm" onclick="pkPrintDN()">🖨 DN Copy</button>
       <button class="btn btn-ghost btn-sm" onclick="pkPrintSticker()">🖨 Sticker</button>
       <button class="btn btn-primary btn-sm" onclick="pkAddToTrip()">Add to Trip</button>
+      <button class="btn btn-ghost btn-sm" onclick="pkAddReturn()" title="Record this order as a return">↩ Add to Return</button>
     </div></div>
     <div style="padding:0 16px 8px;"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 18px;font-size:13px;padding:8px 0;">
       <div><span style="color:var(--muted);">Creation:</span> ${pkFmtDate(o.creationDate)}</div>
@@ -1893,6 +1897,17 @@ function pkToggleLine(i){ if(!pkOrder)return; const s=pkOrder._sel; if(s.has(i))
 function pkToggleAllLines(on){ if(!pkOrder)return; pkOrder._sel=new Set(on?pkOrder.lines.map((_,i)=>i):[]); pkRenderOrderView(); }
 function pkSelectedLines(){ if(!pkOrder)return []; const s=pkOrder._sel; return pkOrder.lines.filter((_,i)=>s.has(i)); }
 function pkAddToTrip(){ if(!pkOrder)return; pkPendingTripOrder=pkOrder.orderNo; pkTab='trip'; pkRender(); showToast('Order ready — set carton qty and add it to the trip.'); }
+async function pkAddReturn(){
+  if(!pkOrder)return; const o=pkOrder;
+  const sel=pkSelectedLines(); const used=(sel.length?sel:o.lines);
+  const lineNos=used.map(l=>l.line_no).filter(x=>x!=null&&x!=='').join(',');
+  const totalQty=used.reduce((s,l)=>s+(parseFloat(l.qty)||0),0);
+  const prev=(CACHE.trips||[]).filter(t=>t.kind==='return'&&t.order_no===o.orderNo).length;
+  const rno=prev+1;
+  const rec={id:'ret_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),kind:'return',return_no:rno,trip_date:new Date().toISOString().split('T')[0],road:'',serial:rno,ship_to:o.shipTo,order_no:o.orderNo,line_nos:lineNos,total_qty:totalQty,carton_qty:0,created_by:currentUser.id,created_at:new Date().toISOString()};
+  try{ await dbInsertTrip([rec]); await pkLoadTrips(true); showToast('Recorded as Return-'+rno+' for '+o.orderNo+'.'); }
+  catch(e){ showToast('Failed: '+e.message+' — did you run SAMPLE_RETURNS_SETUP.sql?','err'); }
+}
 
 // ── Trip Schedule builder ──
 function pkRenderTrip(){
@@ -1918,12 +1933,15 @@ function pkRenderTrip(){
 function pkRenderTripRows(){
   const box=document.getElementById('pk-trip-rows'); if(!box)return;
   if(!pkTripRoad){ box.innerHTML='<div class="card"><div style="padding:16px;color:var(--muted);">Select a road to start building this trip.</div></div>'; return; }
-  const rows=(CACHE.trips||[]).filter(t=>t.trip_date===pkTripDate&&(t.road||'')===pkTripRoad).sort((a,b)=>(a.serial||0)-(b.serial||0));
+  const rows=(CACHE.trips||[]).filter(t=>t.kind!=='return'&&t.trip_date===pkTripDate&&(t.road||'')===pkTripRoad).sort((a,b)=>(a.serial||0)-(b.serial||0));
   let tq=0,tc=0;
-  const body=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return `<tr><td>${i+1}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td><button class="btn btn-reject btn-sm" onclick="pkTripDelete('${t.id}')">Remove</button></td></tr>`;}).join('')||`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">No orders added yet.</td></tr>`;
-  box.innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Trip — ${fmtDate(pkTripDate)} · ${attEsc(pkTripRoad)}</div><div class="card-sub">Total Qty ${tq} · Cartons ${tc}</div></div><div class="card-actions"><button class="btn btn-ghost btn-sm" onclick="pkPrintTrip()">🖨 Print Trip</button></div></div>
-   <div style="overflow:auto;"><table><thead><tr><th>Serial</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Qty</th><th>Cartons</th><th></th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+  const body=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return `<tr><td style="text-align:center;"><input type="checkbox" ${pkTripSel.has(t.id)?'checked':''} onchange="pkTripTick('${t.id}')"/></td><td>${i+1}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td><button class="btn btn-reject btn-sm" onclick="pkTripDelete('${t.id}')">Remove</button></td></tr>`;}).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:16px;">No orders added yet.</td></tr>`;
+  const allOn=rows.length&&rows.every(t=>pkTripSel.has(t.id));
+  box.innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Trip — ${fmtDate(pkTripDate)} · ${attEsc(pkTripRoad)}</div><div class="card-sub">Total Qty ${tq} · Cartons ${tc} · tick rows to print only those (renumbered 1,2,3…)</div></div><div class="card-actions"><button class="btn btn-ghost btn-sm" onclick="pkPrintTrip()">🖨 Print Trip</button></div></div>
+   <div style="overflow:auto;"><table><thead><tr><th style="width:30px;text-align:center;"><input type="checkbox" ${allOn?'checked':''} onchange="pkTripTickAll(this.checked)" title="Tick all"/></th><th>Serial</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Qty</th><th>Cartons</th><th></th></tr></thead><tbody>${body}</tbody></table></div></div>`;
 }
+function pkTripTick(id){ if(pkTripSel.has(id))pkTripSel.delete(id); else pkTripSel.add(id); pkRenderTripRows(); }
+function pkTripTickAll(on){ const rows=(CACHE.trips||[]).filter(t=>t.kind!=='return'&&t.trip_date===pkTripDate&&(t.road||'')===pkTripRoad); pkTripSel=new Set(on?rows.map(t=>t.id):[]); pkRenderTripRows(); }
 async function pkTripAdd(){
   const orderNo=(document.getElementById('pk-trip-order').value||'').trim();
   const carton=parseInt(document.getElementById('pk-trip-carton').value,10)||0;
@@ -1932,8 +1950,8 @@ async function pkTripAdd(){
   try{
     const lines=await dbPkLookup(orderNo); if(!lines.length){ showToast('Order not found: '+orderNo,'err'); return; }
     const h=pkHeader(lines);
-    const serial=(CACHE.trips||[]).filter(t=>t.trip_date===pkTripDate&&(t.road||'')===pkTripRoad).length+1;
-    const rec={id:'trip_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),trip_date:pkTripDate,road:pkTripRoad,serial,ship_to:h.shipTo,order_no:h.orderNo,line_nos:h.lineNos,total_qty:h.totalQty,carton_qty:carton,created_by:currentUser.id,created_at:new Date().toISOString()};
+    const serial=(CACHE.trips||[]).filter(t=>t.kind!=='return'&&t.trip_date===pkTripDate&&(t.road||'')===pkTripRoad).length+1;
+    const rec={id:'trip_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),kind:'trip',trip_date:pkTripDate,road:pkTripRoad,serial,ship_to:h.shipTo,order_no:h.orderNo,line_nos:h.lineNos,total_qty:h.totalQty,carton_qty:carton,created_by:currentUser.id,created_at:new Date().toISOString()};
     await dbInsertTrip([rec]); await pkLoadTrips(true);
     document.getElementById('pk-trip-order').value=''; pkRenderTripRows(); showToast('Added to trip.');
   }catch(e){ showToast('Failed: '+e.message,'err'); }
@@ -1943,24 +1961,43 @@ async function pkTripDelete(id){ if(!confirm('Remove this order from the trip?')
 // ── Trip List ──
 function pkRenderList(){
   const zones=getZones();
-  document.getElementById('pk-body').innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Trip Schedule List</div><div class="card-sub">All saved trip entries</div></div>
+  document.getElementById('pk-body').innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Trip Schedule List</div><div class="card-sub">All trip & return entries · tick rows to print selected (renumbered 1,2,3…)</div></div>
     <div class="card-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
+      <select class="filter-sel" id="pk-list-kind" onchange="pkListKind=this.value;pkRenderListRows()"><option value="">All types</option><option value="trip" ${pkListKind==='trip'?'selected':''}>Trips only</option><option value="return" ${pkListKind==='return'?'selected':''}>Returns only</option></select>
       <select class="filter-sel" id="pk-list-road" onchange="pkRenderListRows()"><option value="">All roads</option>${zones.map(z=>`<option>${attEsc(z)}</option>`).join('')}</select>
       <input class="filter-sel" type="date" id="pk-list-date" onchange="pkRenderListRows()" style="width:150px;"/>
+      <button class="btn btn-ghost btn-sm" onclick="pkPrintSelectedList()">🖨 Print selected</button>
       <button class="btn btn-ghost btn-sm" onclick="pkExportList()">Download CSV</button>
     </div></div>
-    <div style="overflow:auto;"><table><thead><tr><th>Serial</th><th>Date</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Total Qty</th><th>Carton Qty</th><th>Road</th><th>Actions</th></tr></thead><tbody id="pk-list-rows"></tbody></table></div></div>`;
+    <div style="overflow:auto;"><table><thead><tr><th style="width:30px;text-align:center;"><input type="checkbox" id="pk-list-all" onchange="pkListTickAll(this.checked)" title="Tick all"/></th><th>Serial</th><th>Type</th><th>Date</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Total Qty</th><th>Carton Qty</th><th>Road</th><th>Actions</th></tr></thead><tbody id="pk-list-rows"></tbody></table></div></div>`;
   pkRenderListRows();
 }
 function pkListFiltered(){
   const road=(document.getElementById('pk-list-road')||{}).value||'';
   const date=(document.getElementById('pk-list-date')||{}).value||'';
-  return (CACHE.trips||[]).filter(t=>(!road||t.road===road)&&(!date||t.trip_date===date)).sort((a,b)=>(''+b.trip_date).localeCompare(''+a.trip_date)||(a.serial||0)-(b.serial||0));
+  return (CACHE.trips||[]).filter(t=>{
+    const kind=t.kind==='return'?'return':'trip';
+    if(pkListKind&&kind!==pkListKind)return false;
+    if(road&&t.road!==road)return false;
+    if(date&&t.trip_date!==date)return false;
+    return true;
+  }).sort((a,b)=>(''+b.trip_date).localeCompare(''+a.trip_date)||(a.serial||0)-(b.serial||0));
 }
+function pkListType(t){ return t.kind==='return'?('Return-'+(t.return_no||1)):'Trip'; }
 function pkRenderListRows(){
   const tb=document.getElementById('pk-list-rows'); if(!tb)return;
   const rows=pkListFiltered();
-  tb.innerHTML=rows.map(t=>`<tr><td>${attEsc(t.serial)}</td><td style="white-space:nowrap;">${fmtDate(t.trip_date)}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td>${attEsc(t.road)}</td><td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="pkListEdit('${t.id}')">Edit</button> <button class="btn btn-reject btn-sm" onclick="pkListDelete('${t.id}')">Delete</button></td></tr>`).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:16px;">No trips yet.</td></tr>`;
+  tb.innerHTML=rows.map(t=>{ const isRet=t.kind==='return'; const typeBadge=`<span style="font-size:11px;font-weight:600;color:${isRet?'#e0913a':'#4ecdc4'};">${pkListType(t)}</span>`; return `<tr><td style="text-align:center;"><input type="checkbox" ${pkListSel.has(t.id)?'checked':''} onchange="pkListTick('${t.id}')"/></td><td>${attEsc(t.serial)}</td><td>${typeBadge}</td><td style="white-space:nowrap;">${fmtDate(t.trip_date)}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td>${attEsc(t.road)||(isRet?'—':'')}</td><td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="pkListEdit('${t.id}')">Edit</button> <button class="btn btn-reject btn-sm" onclick="pkListDelete('${t.id}')">Delete</button></td></tr>`;}).join('')||`<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:16px;">No entries yet.</td></tr>`;
+}
+function pkListTick(id){ if(pkListSel.has(id))pkListSel.delete(id); else pkListSel.add(id); pkRenderListRows(); }
+function pkListTickAll(on){ pkListSel=new Set(on?pkListFiltered().map(t=>t.id):[]); pkRenderListRows(); }
+function pkPrintSelectedList(){
+  let rows=pkListFiltered().filter(t=>pkListSel.has(t.id));
+  if(!rows.length)rows=pkListFiltered();
+  if(!rows.length){ showToast('Nothing to print.','err'); return; }
+  rows=rows.slice().sort((a,b)=>(''+a.trip_date).localeCompare(''+b.trip_date)||(a.serial||0)-(b.serial||0));
+  const date=rows[0].trip_date, road=[...new Set(rows.map(r=>r.road).filter(Boolean))].join(', ');
+  pkTripPrintRows(rows,date,road);
 }
 async function pkListEdit(id){
   const t=(CACHE.trips||[]).find(x=>x.id===id); if(!t)return;
@@ -1977,9 +2014,48 @@ async function pkListDelete(id){
 }
 function pkExportList(){
   const rows=pkListFiltered();
-  const header='Serial,Date,Ship to Party,Order No,Line Nos,Total Qty,Carton Qty,Road\n';
-  const csv=rows.map(t=>[t.serial,fmtDate(t.trip_date),t.ship_to,t.order_no,t.line_nos,t.total_qty,t.carton_qty,t.road].map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const header='Type,Serial,Date,Ship to Party,Order No,Line Nos,Total Qty,Carton Qty,Road\n';
+  const csv=rows.map(t=>[pkListType(t),t.serial,fmtDate(t.trip_date),t.ship_to,t.order_no,t.line_nos,t.total_qty,t.carton_qty,t.road].map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([header+csv],{type:'text/csv'})); a.download='Trip_Schedule_List.csv'; a.click();
+}
+
+// ── Returns dashboard ──
+let pkRetChart1=null, pkRetChart2=null;
+function pkReturns(){ return (CACHE.trips||[]).filter(t=>t.kind==='return'); }
+function pkRenderReturns(){
+  const rets=pkReturns();
+  const total=rets.length;
+  const orders=new Set(rets.map(r=>r.order_no));
+  const repeat=[...orders].filter(o=>rets.filter(r=>r.order_no===o).length>1).length;
+  const mNow=new Date().toISOString().slice(0,7);
+  const thisMonth=rets.filter(r=>(r.trip_date||'').slice(0,7)===mNow).length;
+  const qty=rets.reduce((s,r)=>s+(parseFloat(r.total_qty)||0),0);
+  // group by month + by customer
+  const byMonth={}; rets.forEach(r=>{ const m=(r.trip_date||'').slice(0,7)||'—'; byMonth[m]=(byMonth[m]||0)+1; });
+  const byCust={}; rets.forEach(r=>{ const c=r.ship_to||'—'; byCust[c]=(byCust[c]||0)+1; });
+  const custTop=Object.entries(byCust).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const tableRows=rets.slice().sort((a,b)=>(''+b.trip_date).localeCompare(''+a.trip_date)).map(r=>`<tr><td><span style="font-size:11px;font-weight:600;color:#e0913a;">Return-${r.return_no||1}</span></td><td style="white-space:nowrap;">${fmtDate(r.trip_date)}</td><td>${attEsc(r.ship_to)}</td><td>${attEsc(r.order_no)}</td><td style="font-size:12px;">${attEsc(r.line_nos)}</td><td>${attEsc(r.total_qty)}</td><td><button class="btn btn-reject btn-sm" onclick="pkListDelete('${r.id}')">Delete</button></td></tr>`).join('')||`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:18px;">No returns recorded yet. Open an order and click “Add to Return”.</td></tr>`;
+  document.getElementById('pk-body').innerHTML=`
+   <div class="att-stat-row" style="margin-bottom:14px;">
+     <div class="att-stat"><div class="v">${total}</div><div class="l">Total return days</div></div>
+     <div class="att-stat"><div class="v">${orders.size}</div><div class="l">Orders returned</div></div>
+     <div class="att-stat"><div class="v">${repeat}</div><div class="l">Repeat returns (2+)</div></div>
+     <div class="att-stat"><div class="v">${thisMonth}</div><div class="l">Returns this month</div></div>
+     <div class="att-stat"><div class="v">${qty}</div><div class="l">Total returned qty</div></div>
+   </div>
+   <div class="att-charts" style="margin-bottom:14px;">
+     <div class="card"><div class="form-label" style="margin:0 0 6px;">Returns by month</div><canvas id="pk-ret-month"></canvas></div>
+     <div class="card"><div class="form-label" style="margin:0 0 6px;">Top customers by returns</div><canvas id="pk-ret-cust"></canvas></div>
+   </div>
+   <div class="card"><div class="card-header"><div><div class="card-title">Returned orders</div><div class="card-sub">Each “Add to Return” adds one return day; the same order returned again becomes Return-2, Return-3…</div></div></div>
+     <div style="overflow:auto;"><table><thead><tr><th>Return</th><th>Date</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Qty</th><th></th></tr></thead><tbody>${tableRows}</tbody></table></div></div>`;
+  // charts
+  setTimeout(()=>{ try{
+    if(pkRetChart1)pkRetChart1.destroy(); if(pkRetChart2)pkRetChart2.destroy();
+    const mk=Object.keys(byMonth).sort(); 
+    const c1=document.getElementById('pk-ret-month'); if(c1)pkRetChart1=new Chart(c1,{type:'bar',data:{labels:mk.map(m=>m==='—'?m:monthLabel(m)),datasets:[{label:'Returns',data:mk.map(m=>byMonth[m]),backgroundColor:'#e0913a'}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+    const c2=document.getElementById('pk-ret-cust'); if(c2)pkRetChart2=new Chart(c2,{type:'bar',data:{labels:custTop.map(x=>x[0].length>18?x[0].slice(0,18)+'…':x[0]),datasets:[{label:'Returns',data:custTop.map(x=>x[1]),backgroundColor:fceColorList(custTop.map(x=>x[0]))}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
+  }catch(e){} },60);
 }
 
 // ── Import ──
@@ -2170,14 +2246,14 @@ async function pkPrintSticker(){
   if(pkStickerBarcode()){
     try{ await pkLoadBarcode(); const val=o.orderNo+(lineNos?('-'+lineNos):''); const d=pkMakeBarcode(val); if(d)barImg='<div class="bc"><img src="'+d+'"/></div>'; }catch(e){}
   }
-  const row=(l,v)=>'<tr><td class="l">'+l+'</td><td class="v">'+attEsc(v||'')+'</td></tr>';
+  const row=(l,v,strong)=>'<tr><td class="l">'+l+'</td><td class="v'+(strong?' vb':'')+'">'+attEsc(v||'')+'</td></tr>';
   const body=''
    +'<div class="hdr"><div class="brand">'+pkLogoImg(false)+'</div><div class="dt">'+pkNow()+'</div></div>'
    +'<table class="st">'
-   +row('Ship to Party Name:',o.shipTo)
+   +row('Ship to Party Name:',o.shipTo,true)
    +row('Requester Name:',o.requester)
    +row('Buyer Name:',o.buyer)
-   +row('Customer Order Ref. No:',o.orderNo)
+   +row('Customer Order Ref. No:',o.orderNo,true)
    +row('Lines No:',lineNos)
    +row('Requester Mobile No:',o.mobile)
    +row('Style No:',o.styleNo)
@@ -2192,20 +2268,26 @@ async function pkPrintSticker(){
    +'.st td{border:1px solid #000;padding:3px 7px;font-size:11px;}'
    +'.st td.l{font-weight:bold;width:44%;background:#f4f4f4;}'
    +'.st td.v{font-weight:600;}'
+   +'.st td.vb{font-weight:800;font-size:13px;}'
    +'.bc{text-align:center;margin-top:8px;}.bc img{max-width:80%;height:auto;}'
    +'.biglogo{text-align:center;margin-top:8px;}';
   pkPrintWindow('Sticker '+o.orderNo, body, css);
 }
+function pkTripPrintRows(rows,date,road){
+  if(!rows.length){ showToast('Nothing to print — tick rows or add orders first.','err'); return; }
+  let tq=0,tc=0;
+  const tr=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return '<tr><td style="text-align:center;">'+(i+1)+'</td><td>'+attEsc(t.ship_to)+'</td><td>'+attEsc(t.order_no)+'</td><td>'+attEsc(t.line_nos)+'</td><td style="text-align:center;">'+attEsc(t.total_qty)+'</td><td style="text-align:center;">'+attEsc(t.carton_qty)+'</td></tr>';}).join('');
+  const body='<h2 style="text-align:center;">Sampling Trip Schedule</h2><div class="kv"><b>Date:</b><span>'+fmtDate(date)+'</span><b>Road Name:</b><span>'+attEsc(road||'—')+'</span></div>'
+    +'<table><thead><tr><th>Serial</th><th>Ship to Party Name</th><th>Sample Order No</th><th>Line Nos</th><th>Ordered Qty</th><th>Carton Qty</th></tr></thead><tbody>'+tr
+    +'<tr><td colspan="4" style="text-align:right;font-weight:bold;">Total:</td><td style="font-weight:bold;text-align:center;">'+tq+'</td><td style="font-weight:bold;text-align:center;">'+tc+'</td></tr></tbody></table>';
+  pkPrintWindow('Trip '+date+' '+(road||''), body);
+}
 function pkPrintTrip(){
   const date=pkTripDate, road=pkTripRoad;
-  const rows=(CACHE.trips||[]).filter(t=>t.trip_date===date&&(t.road||'')===road).sort((a,b)=>(a.serial||0)-(b.serial||0));
-  if(!rows.length){ showToast('No rows in this trip yet.','err'); return; }
-  let tq=0,tc=0;
-  const tr=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return '<tr><td>'+(i+1)+'</td><td>'+attEsc(t.ship_to)+'</td><td>'+attEsc(t.order_no)+'</td><td>'+attEsc(t.line_nos)+'</td><td>'+attEsc(t.total_qty)+'</td><td>'+attEsc(t.carton_qty)+'</td></tr>';}).join('');
-  const body='<h2>Sampling Trip Schedule</h2><div class="kv"><b>Date:</b><span>'+fmtDate(date)+'</span><b>Road Name:</b><span>'+attEsc(road||'—')+'</span></div>'
-    +'<table><thead><tr><th>Serial</th><th>Ship to Party Name</th><th>Sample Order No</th><th>Line Nos</th><th>Ordered Qty</th><th>Carton Qty</th></tr></thead><tbody>'+tr
-    +'<tr><td colspan="4" style="text-align:right;font-weight:bold;">Total:</td><td style="font-weight:bold;">'+tq+'</td><td style="font-weight:bold;">'+tc+'</td></tr></tbody></table>';
-  pkPrintWindow('Trip '+date+' '+(road||''), body);
+  let rows=(CACHE.trips||[]).filter(t=>t.kind!=='return'&&t.trip_date===date&&(t.road||'')===road).sort((a,b)=>(a.serial||0)-(b.serial||0));
+  const ticked=rows.filter(t=>pkTripSel.has(t.id));
+  if(ticked.length)rows=ticked; // print only ticked rows when any are ticked
+  pkTripPrintRows(rows,date,road);
 }
 
 </script>
