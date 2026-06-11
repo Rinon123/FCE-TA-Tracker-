@@ -309,7 +309,7 @@ select.form-input option{background:var(--surface2);}
       <div class="card">
         <div class="card-header"><div><div class="card-title" id="dash-table-title">FCE Performance Summary</div><div class="card-sub" id="dash-month-sub">Approved entries</div></div>
           <div class="card-actions"><button class="btn btn-ghost btn-sm" onclick="downloadSummary()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</button></div></div>
-        <table><thead><tr><th>#</th><th>FCE</th><th>Days</th><th>Visits</th><th>Total TA (৳)</th><th>Per Day</th><th>Cost/Visit</th><th>Visits/Day</th><th>TA Share</th></tr></thead><tbody id="summary-table"></tbody></table>
+        <table><thead><tr><th>Serial No.</th><th>FCE</th><th>Days</th><th>Visits</th><th>Total TA (৳)</th><th>Per Day</th><th>Cost/Visit</th><th>Visits/Day</th><th>TA Share</th></tr></thead><tbody id="summary-table"></tbody></table>
       </div>
     </div>
 
@@ -867,8 +867,8 @@ function renderSummary(){
   document.getElementById('dash-month-sub').textContent=(mf==='all'?'All months':monthLabel(mf))+' — approved entries';
   const rc=['#f5a623','#a0a0b8','#c47a4e'];
   document.getElementById('summary-table').innerHTML=data.map((r,i)=>{
-    const cpv=r.visits?Math.round(r.ta/r.visits):0, vpd=r.days?(r.visits/r.days).toFixed(1):'—', pct=total?Math.round(r.ta/total*100):0, c=fceColor(r.name), rcol=i<3?rc[i]:'#3a3a50';
-    return `<tr><td><span class="rank-badge" style="background:${rcol}22;color:${rcol};">${i+1}</span></td><td><span class="fw6" style="color:${c};">${r.name}</span></td><td class="mono">${r.days}</td><td class="mono">${r.visits}</td><td class="mono fw6">৳${r.ta.toLocaleString()}</td><td class="mono">৳${Math.round(r.ta/Math.max(1,r.days)).toLocaleString()}</td><td class="mono">৳${cpv}</td><td class="mono">${vpd}</td><td><div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c};"></div></div><span class="pct">${pct}%</span></div></td></tr>`;
+    const cpv=r.visits?Math.round(r.ta/r.visits):0, vpd=r.days?(r.visits/r.days).toFixed(1):'—', pct=total?Math.round(r.ta/total*100):0, c=fceColor(r.name), rcol=i<3?rc[i]:'#aeb4d6';
+    return `<tr><td><span class="rank-badge" style="background:${rcol}26;color:${rcol};font-weight:700;">${i+1}</span></td><td><span class="fw6" style="color:${c};">${r.name}</span></td><td class="mono">${r.days}</td><td class="mono">${r.visits}</td><td class="mono fw6">৳${r.ta.toLocaleString()}</td><td class="mono">৳${Math.round(r.ta/Math.max(1,r.days)).toLocaleString()}</td><td class="mono">৳${cpv}</td><td class="mono">${vpd}</td><td><div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c};"></div></div><span class="pct">${pct}%</span></div></td></tr>`;
   }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">No approved entries yet</td></tr>`;
   updateSidebarTotal();
 }
@@ -1121,7 +1121,8 @@ function buildCharts(monthFilter){
   const mk=(id,cfg)=>{ if(chartInstances[id])chartInstances[id].destroy(); const cv=document.getElementById(id); if(cv)chartInstances[id]=new Chart(cv,cfg); };
   const bar=(d,clr)=>({type:'bar',data:{labels:names,datasets:[{data:d,backgroundColor:(clr||colors).map(c=>c+'cc'),borderColor:clr||colors,borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{color:tc,font:tf},grid:{color:gc},border:{display:false}},x:{ticks:{color:tc,font:{size:9}},grid:{display:false},border:{display:false}}}}});
   mk('c-bar',{type:'bar',data:{labels:names,datasets:[{data:tas,backgroundColor:colors.map(c=>c+'cc'),borderColor:colors,borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'৳'+(v/1000).toFixed(0)+'k',color:tc,font:tf},grid:{color:gc},border:{display:false}},x:{ticks:{color:tc,font:{size:10}},grid:{display:false},border:{display:false}}}}});
-  mk('c-pie',{type:'doughnut',data:{labels:names,datasets:[{data:tas,backgroundColor:colors.map(c=>c+'cc'),borderColor:colors,borderWidth:1.5,hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ৳${ctx.parsed.toLocaleString()} (${totalTA?Math.round(ctx.parsed/totalTA*100):0}%)`}}}}});
+  const piCenter={id:'piCenter',afterDraw(chart){const a=chart.chartArea;if(!a)return;const x=(a.left+a.right)/2,y=(a.top+a.bottom)/2,ctx=chart.ctx;ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#e8e8f2';ctx.font='700 20px "DM Mono",monospace';ctx.fillText('৳'+(totalTA>=1000?(totalTA/1000).toFixed(1)+'k':totalTA),x,y-6);ctx.fillStyle='#8a8aa0';ctx.font='600 11px Inter,sans-serif';ctx.fillText('Total TA',x,y+14);ctx.restore();}};
+  mk('c-pie',{type:'doughnut',data:{labels:names,datasets:[{data:tas,backgroundColor:colors.map(c=>c+'cc'),borderColor:colors,borderWidth:1.5,hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ৳${ctx.parsed.toLocaleString()} (${totalTA?Math.round(ctx.parsed/totalTA*100):0}%)`}}}},plugins:[piCenter]});
   document.getElementById('legend-pie').innerHTML=names.map((n,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${colors[i]};"></div>${n} ${totalTA?Math.round(tas[i]/totalTA*100):0}%</div>`).join('');
   mk('c-perday',bar(perday)); mk('c-visits',bar(visits));
   mk('c-avgcall',bar(cpvs,cpvs.map(v=>{const avg=cpvs.reduce((a,b)=>a+b,0)/Math.max(1,cpvs.length);return v>avg?'#e05252':'#52c87a';})));
