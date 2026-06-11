@@ -598,6 +598,7 @@ async function dbDeleteEntry(id){ const {error}=await sb.from('entries').delete(
 async function dbInsertUser(u){ const {error}=await sb.from('app_users').insert(u); if(error)throw error; }
 async function dbDeleteUser(id){ const {error}=await sb.from('app_users').delete().eq('id',id); if(error)throw error; }
 async function dbSaveMaster(m){ const {error}=await sb.from('master_data').upsert({id:1,fce:m.fce,customers:m.customers,purposes:m.purposes,reasons:m.reasons,buyers:m.buyers,updated_at:new Date().toISOString()}); if(error)throw error; }
+async function dbSaveZones(zones){ const {error}=await sb.from('master_data').upsert({id:1,zones:zones,updated_at:new Date().toISOString()}); if(error)throw error; }
 // ── Order Tracker DB ──
 async function dbGetOrders(){ const {data,error}=await sb.from('sample_orders').select('*').order('date',{ascending:false}); if(error)throw error; return data; }
 async function dbUpsertOrder(o){ const {error}=await sb.from('sample_orders').upsert(o); if(error)throw error; }
@@ -630,6 +631,10 @@ async function refreshAll(){
       buyers:(master.buyers&&master.buyers.length)?master.buyers:[...DEFAULT_BUYERS]
     } : { fce:[...DEFAULT_FCE_LIST], customers:CUSTOMER_MASTER.map(c=>c[1]), customerCodes:CUSTOMER_MASTER.slice(), purposes:[...DEFAULT_PURPOSES], reasons:[...DEFAULT_REASONS], buyers:[...DEFAULT_BUYERS] };
     try{ CACHE.orders=(await dbGetOrders()).map(rowToOrder); }catch(oe){ CACHE.orders=[]; }
+    try{
+      if(master && master.zones!=null){ lsSet(ZONE_KEY, Array.isArray(master.zones)?master.zones:[]); }
+      else { const lz=getZones(); if(lz.length){ await dbSaveZones(lz); } }
+    }catch(ze){}
     try{ CACHE.announcements=await dbGetAnnouncements(); ANN_CLOUD=true; }catch(ae){ CACHE.announcements=null; ANN_CLOUD=false; }
     setSync(true,'Cloud synced');
     rerenderActive();
@@ -1740,8 +1745,8 @@ async function deleteAnnouncement(id){
 /* ── Delivery zones (for Order Tracker) ── */
 const ZONE_KEY='sc_delivery_zones';
 function getZones(){ const v=lsGet(ZONE_KEY,[]); return Array.isArray(v)?v:[]; }
-function addZone(){ const inp=document.getElementById('new-zone-input'); const v=(inp.value||'').trim(); if(!v)return; const z=getZones(); if(!z.some(x=>x.toLowerCase()===v.toLowerCase())){ z.push(v); z.sort((a,b)=>a.localeCompare(b)); lsSet(ZONE_KEY,z); } inp.value=''; renderZoneMaster(); populateZoneSelects(); showToast('Delivery zone added.'); }
-function deleteZoneAt(i){ if(!isAdmin()){ showToast('Only Super Admin can delete zones.','err'); return; } const z=getZones(); z.splice(i,1); lsSet(ZONE_KEY,z); renderZoneMaster(); populateZoneSelects(); }
+async function addZone(){ const inp=document.getElementById('new-zone-input'); const v=(inp.value||'').trim(); if(!v)return; const z=getZones(); if(!z.some(x=>x.toLowerCase()===v.toLowerCase())){ z.push(v); z.sort((a,b)=>a.localeCompare(b)); lsSet(ZONE_KEY,z); try{ await dbSaveZones(z); }catch(e){ showToast('Saved locally but cloud sync failed: '+e.message,'err'); } } inp.value=''; renderZoneMaster(); populateZoneSelects(); showToast('Delivery zone added (shared to all PCs).'); }
+async function deleteZoneAt(i){ if(!isAdmin()){ showToast('Only Super Admin can delete zones.','err'); return; } const z=getZones(); z.splice(i,1); lsSet(ZONE_KEY,z); try{ await dbSaveZones(z); }catch(e){ showToast('Cloud sync failed: '+e.message,'err'); } renderZoneMaster(); populateZoneSelects(); }
 function renderZoneMaster(){ const box=document.getElementById('master-zone-list'); if(!box)return; const z=getZones(); box.innerHTML = z.length ? z.map((n,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;">${attEsc(n)}</span>${isAdmin()?`<button class="btn-icon btn-sm" title="Delete" onclick="deleteZoneAt(${i})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>`:''}</div>`).join('') : '<div style="color:var(--muted);font-size:12px;padding:4px 0;">No zones yet. Add one below.</div>'; }
 function populateZoneSelects(){
   const z=getZones();
@@ -2281,7 +2286,7 @@ async function pkPrintSticker(){
    +'.st td.v{font-weight:600;}'
    +'.st td.vb{font-weight:800;font-size:13px;}'
    +'.bc{text-align:center;margin-top:8px;}.bc img{max-width:80%;height:auto;}'
-   +'.biglogo{text-align:center;margin-top:8px;}';
+   +'.biglogo{text-align:center;margin-top:22mm;}';
   pkPrintWindow('Sticker '+o.orderNo, body, css);
 }
 function pkTripPrintRows(rows,date,road){
