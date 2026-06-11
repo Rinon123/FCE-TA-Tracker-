@@ -2031,7 +2031,7 @@ function pkReturns(){ return (CACHE.trips||[]).filter(t=>t.kind==='return'); }
 function pkRenderReturns(){
   const all=pkReturns();
   const custList=[...new Set(all.map(r=>r.ship_to).filter(Boolean))].sort();
-  const rets=pkRetCust?all.filter(r=>r.ship_to===pkRetCust):all;
+  const rets=pkRetCust?all.filter(r=>(r.ship_to||'').toLowerCase().includes(pkRetCust.toLowerCase())):all;
   const total=rets.length;
   const orders=new Set(rets.map(r=>r.order_no));
   const repeat=[...orders].filter(o=>rets.filter(r=>r.order_no===o).length>1).length;
@@ -2048,7 +2048,7 @@ function pkRenderReturns(){
    <div class="att-stat-row" style="margin-bottom:14px;">
      <div class="att-stat"><div class="v">${total}</div><div class="l">Total return days</div></div>
      <div class="att-stat"><div class="v">${orders.size}</div><div class="l">Orders returned</div></div>
-     <div class="att-stat"><div class="v">${repeat}</div><div class="l">Repeat returns (2+)</div></div>
+     <div class="att-stat" style="border:1.5px solid #e05252;background:rgba(224,82,82,.10);"><div class="v" style="color:#ff6b6b;">${repeat}</div><div class="l" style="color:#ff8a8a;">Repeat returns (2+)</div></div>
      <div class="att-stat"><div class="v">${thisMonth}</div><div class="l">Returns this month</div></div>
      <div class="att-stat"><div class="v">${qty}</div><div class="l">Total returned qty</div></div>
    </div>
@@ -2057,8 +2057,9 @@ function pkRenderReturns(){
      <div class="card"><div class="form-label" style="margin:0 0 6px;">Top customers by returns</div><canvas id="pk-ret-cust"></canvas></div>
    </div>
    <div class="card"><div class="card-header"><div><div class="card-title">Returned orders</div><div class="card-sub">Each “Add to Return” adds one return day; the same order+lines returned again becomes Return-2, Return-3…</div></div>
-     <div class="card-actions"><select class="filter-sel" onchange="pkRetCust=this.value;pkRenderReturns()"><option value="">All customers</option>${custList.map(c=>`<option ${pkRetCust===c?'selected':''}>${attEsc(c)}</option>`).join('')}</select></div></div>
+     <div class="card-actions"><input class="filter-sel" id="pk-ret-search" type="text" value="${attEsc(pkRetCust)}" placeholder="Search customer…" style="min-width:230px;" oninput="pkRetCust=this.value;pkRenderReturns()"/></div></div>
      <div style="overflow:auto;"><table><thead><tr><th>Return</th><th>Date</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Road</th><th>Qty</th><th></th></tr></thead><tbody>${tableRows}</tbody></table></div></div>`;
+  if(pkRetCust){ const si=document.getElementById('pk-ret-search'); if(si){ si.focus(); si.setSelectionRange(si.value.length,si.value.length); } }
   // charts
   setTimeout(()=>{ try{
     if(pkRetChart1)pkRetChart1.destroy(); if(pkRetChart2)pkRetChart2.destroy();
