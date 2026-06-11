@@ -1795,7 +1795,7 @@ function attRenderLeaveSection(){
 //  sample_lines + trip_schedule live in Supabase (run SAMPLE_PACKING_SETUP.sql)
 // ═══════════════════════════════════════════════════════════════
 let pkTab='orders', pkOrder=null, pkResults=[], pkTripDate=null, pkTripRoad='', pkPendingTripOrder='';
-let pkTripSel=new Set(), pkListSel=new Set(), pkListKind='', pkRetCust='';
+let pkTripSel=new Set(), pkListSel=new Set(), pkListKind='', pkRetCust='', pkPendingCarton='';
 
 // ── DB ──
 async function dbPkLookup(orderNo){ const {data,error}=await sb.from('sample_lines').select('*').eq('order_no',orderNo); if(error)throw error; return data||[]; }
@@ -1881,6 +1881,7 @@ function pkRenderOrderView(){
       <button class="btn btn-ghost btn-sm" onclick="pkPrintDN()">🖨 DN Copy</button>
       <button class="btn btn-ghost btn-sm" onclick="pkPrintSticker()">🖨 Sticker</button>
       <button class="btn btn-primary btn-sm" onclick="pkAddToTrip()">Add to Trip</button>
+      <input class="filter-sel" id="pk-ov-carton" type="number" min="0" value="1" style="width:90px;" title="Carton Qty"/>
       <select class="filter-sel" id="pk-return-road" style="min-width:130px;" title="Road for the return"><option value="">Road…</option>${getZones().map(z=>`<option>${attEsc(z)}</option>`).join('')}</select>
       <button class="btn btn-ghost btn-sm" onclick="pkAddReturn()" title="Record this order as a return">↩ Add to Return</button>
     </div></div>
@@ -1897,7 +1898,7 @@ function pkRenderOrderView(){
 function pkToggleLine(i){ if(!pkOrder)return; const s=pkOrder._sel; if(s.has(i))s.delete(i); else s.add(i); pkRenderOrderView(); }
 function pkToggleAllLines(on){ if(!pkOrder)return; pkOrder._sel=new Set(on?pkOrder.lines.map((_,i)=>i):[]); pkRenderOrderView(); }
 function pkSelectedLines(){ if(!pkOrder)return []; const s=pkOrder._sel; return pkOrder.lines.filter((_,i)=>s.has(i)); }
-function pkAddToTrip(){ if(!pkOrder)return; pkPendingTripOrder=pkOrder.orderNo; pkTab='trip'; pkRender(); showToast('Order ready — set carton qty and add it to the trip.'); }
+function pkAddToTrip(){ if(!pkOrder)return; pkPendingTripOrder=pkOrder.orderNo; pkPendingCarton=(document.getElementById('pk-ov-carton')||{}).value||'1'; pkTab='trip'; pkRender(); showToast('Order ready — confirm carton qty and add it to the trip.'); }
 async function pkAddReturn(){
   if(!pkOrder)return; const o=pkOrder;
   const road=((document.getElementById('pk-return-road')||{}).value||'').trim();
@@ -1905,10 +1906,11 @@ async function pkAddReturn(){
   const sel=pkSelectedLines(); const used=(sel.length?sel:o.lines);
   const lineNos=used.map(l=>l.line_no).filter(x=>x!=null&&x!=='').join(',');
   const totalQty=used.reduce((s,l)=>s+(parseFloat(l.qty)||0),0);
+  const carton=parseInt((document.getElementById('pk-ov-carton')||{}).value,10)||0;
   // Return number is scoped to the SAME order + SAME line numbers
   const prev=(CACHE.trips||[]).filter(t=>t.kind==='return'&&t.order_no===o.orderNo&&(t.line_nos||'')===lineNos).length;
   const rno=prev+1;
-  const rec={id:'ret_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),kind:'return',return_no:rno,trip_date:new Date().toISOString().split('T')[0],road:road,serial:rno,ship_to:o.shipTo,order_no:o.orderNo,line_nos:lineNos,total_qty:totalQty,carton_qty:0,created_by:currentUser.id,created_at:new Date().toISOString()};
+  const rec={id:'ret_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),kind:'return',return_no:rno,trip_date:new Date().toISOString().split('T')[0],road:road,serial:rno,ship_to:o.shipTo,order_no:o.orderNo,line_nos:lineNos,total_qty:totalQty,carton_qty:carton,created_by:currentUser.id,created_at:new Date().toISOString()};
   try{ await dbInsertTrip([rec]); await pkLoadTrips(true); showToast('Recorded as Return-'+rno+' ('+o.orderNo+' · lines '+(lineNos||'—')+').'); }
   catch(e){ showToast('Failed: '+e.message+' — did you run SAMPLE_RETURNS_SETUP.sql?','err'); }
 }
@@ -1927,11 +1929,11 @@ function pkRenderTrip(){
    </div></div>
    <div class="card" style="margin-bottom:14px;"><div style="padding:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
      <div><div class="form-label">Order No</div><input class="form-input" id="pk-trip-order" value="${attEsc(pkPendingTripOrder||'')}" placeholder="RS…" style="width:180px;"/></div>
-     <div><div class="form-label">Carton Qty</div><input class="form-input" id="pk-trip-carton" type="number" min="0" value="1" style="width:110px;"/></div>
+     <div><div class="form-label">Carton Qty</div><input class="form-input" id="pk-trip-carton" type="number" min="0" value="${pkPendingCarton||1}" style="width:110px;"/></div>
      <button class="btn btn-primary btn-sm" onclick="pkTripAdd()">Add order to trip</button>
    </div></div>
    <div id="pk-trip-rows"></div>`;
-  pkPendingTripOrder='';
+  pkPendingTripOrder=''; pkPendingCarton='';
   pkRenderTripRows();
 }
 function pkRenderTripRows(){
@@ -2027,7 +2029,9 @@ function pkExportList(){
 let pkRetChart1=null, pkRetChart2=null;
 function pkReturns(){ return (CACHE.trips||[]).filter(t=>t.kind==='return'); }
 function pkRenderReturns(){
-  const rets=pkReturns();
+  const all=pkReturns();
+  const custList=[...new Set(all.map(r=>r.ship_to).filter(Boolean))].sort();
+  const rets=pkRetCust?all.filter(r=>r.ship_to===pkRetCust):all;
   const total=rets.length;
   const orders=new Set(rets.map(r=>r.order_no));
   const repeat=[...orders].filter(o=>rets.filter(r=>r.order_no===o).length>1).length;
@@ -2038,8 +2042,7 @@ function pkRenderReturns(){
   const byMonth={}; rets.forEach(r=>{ const m=(r.trip_date||'').slice(0,7)||'—'; byMonth[m]=(byMonth[m]||0)+1; });
   const byCust={}; rets.forEach(r=>{ const c=r.ship_to||'—'; byCust[c]=(byCust[c]||0)+1; });
   const custTop=Object.entries(byCust).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const custList=[...new Set(rets.map(r=>r.ship_to).filter(Boolean))].sort();
-  const tblData=rets.filter(r=>!pkRetCust||r.ship_to===pkRetCust).sort((a,b)=>(''+b.trip_date).localeCompare(''+a.trip_date));
+  const tblData=rets.slice().sort((a,b)=>(''+b.trip_date).localeCompare(''+a.trip_date));
   const tableRows=tblData.map(r=>`<tr><td><span style="font-size:11px;font-weight:600;color:#e0913a;">Return-${r.return_no||1}</span></td><td style="white-space:nowrap;">${fmtDate(r.trip_date)}</td><td>${attEsc(r.ship_to)}</td><td>${attEsc(r.order_no)}</td><td style="font-size:12px;">${attEsc(r.line_nos)}</td><td>${attEsc(r.road)||'—'}</td><td>${attEsc(r.total_qty)}</td><td><button class="btn btn-reject btn-sm" onclick="pkListDelete('${r.id}')">Delete</button></td></tr>`).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px;">No returns recorded yet. Open an order and click “Add to Return”.</td></tr>`;
   document.getElementById('pk-body').innerHTML=`
    <div class="att-stat-row" style="margin-bottom:14px;">
