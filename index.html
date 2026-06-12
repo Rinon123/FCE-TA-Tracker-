@@ -2218,11 +2218,14 @@ async function pkDoImport(){
 function pkPrintWindow(title, bodyHtml, pageCss){
   const w=window.open('','_blank','width=920,height=720');
   if(!w){ showToast('Please allow pop-ups for this site to print.','err'); return; }
+  const who=(typeof currentUser!=='undefined'&&currentUser&&(currentUser.name||currentUser.id))||'';
+  const footer='<div class="print-by">Printed by: '+attEsc(who)+'</div>';
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title><style>'
     +'*{box-sizing:border-box;}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:18px;}'
     +'table{border-collapse:collapse;width:100%;margin-top:6px;}th,td{border:1px solid #333;padding:5px 7px;font-size:12px;text-align:left;vertical-align:top;}th{background:#eee;}'
     +'h2{margin:0 0 10px;}.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:13px;margin-bottom:10px;}.kv b{white-space:nowrap;}'
-    +(pageCss||'')+'</style></head><body>'+bodyHtml+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},120);};<\/scr'+'ipt></body></html>');
+    +'.print-by{position:fixed;left:6mm;bottom:5mm;font-size:10px;color:#555;}'
+    +(pageCss||'')+'</style></head><body>'+bodyHtml+footer+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},120);};<\/scr'+'ipt></body></html>');
   w.document.close();
 }
 function pkPrintDN(){
