@@ -255,6 +255,32 @@ select.form-input option{background:var(--surface2);}
 .announce-list-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
 .announce-list-item:last-child{border-bottom:none;}
 .announce-list-item span{flex:1;font-size:13px;}
+/* ===== Open Order Report ===== */
+.oor-pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:4px 0 4px;}
+.oor-stage{position:relative;background:var(--card2,#171726);border:1px solid var(--border);border-radius:13px;padding:14px 15px;overflow:hidden;}
+.oor-stage::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c);}
+.oor-stage .lab{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:7px;}
+.oor-stage .dot{width:9px;height:9px;border-radius:50%;background:var(--c);}
+.oor-stage .v{font-size:28px;font-weight:800;margin:6px 0 1px;letter-spacing:-1px;}
+.oor-stage .sub{font-size:11px;color:var(--muted);}
+.oor-stage .arr{position:absolute;right:-12px;top:50%;transform:translateY(-50%);color:var(--border);font-size:20px;z-index:2;}
+.oor-stage:last-child .arr{display:none;}
+.oor-pivot th,.oor-pivot td{text-align:right;}
+.oor-pivot th:first-child,.oor-pivot td:first-child{text-align:left;}
+.oor-pivot tfoot td{font-weight:800;border-top:2px solid var(--border);}
+.oor-chip{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:7px;vertical-align:0;}
+.oor-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.oor-badge .bd{width:7px;height:7px;border-radius:50%;}
+.oor-pill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:6px;}
+.oor-up{border:1.5px dashed var(--border);border-radius:13px;padding:18px;text-align:center;background:var(--card2,#171726);}
+.oor-up.req{border-color:var(--accent);}
+.oor-file{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:11px;background:var(--card2,#171726);margin-bottom:8px;}
+.oor-file .meta{font-size:12px;color:var(--muted);}
+.oor-file .ok{color:#52c87a;font-weight:700;}
+.oor-grid2{display:grid;grid-template-columns:1.05fr 1fr;gap:14px;}
+.oor-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.oor-mini{font-size:11px;color:var(--muted);}
+@media(max-width:900px){.oor-pipe{grid-template-columns:repeat(2,1fr);}.oor-grid2,.oor-grid3{grid-template-columns:1fr;}.oor-stage .arr{display:none;}}
 </style>
 </head>
 <body>
@@ -450,6 +476,21 @@ select.form-input option{background:var(--surface2);}
         <button class="att-tab" data-pk="import" onclick="pkSwitch('import',this)">Import Data</button>
       </div>
       <div id="pk-body"></div>
+    </div>
+
+    <!-- OPEN ORDER REPORT -->
+    <div class="page" id="page-oor">
+      <div class="att-tabs" id="oor-tabs">
+        <button class="att-tab active" data-oor="summary" onclick="oorSwitch('summary',this)">Summary</button>
+        <button class="att-tab" data-oor="orders" onclick="oorSwitch('orders',this)">All Open Orders</button>
+        <button class="att-tab" data-oor="p1" onclick="oorSwitch('p1',this)">P1 List</button>
+        <button class="att-tab" data-oor="dtm" onclick="oorSwitch('dtm',this)">DTM Pending</button>
+        <button class="att-tab" data-oor="feedback" onclick="oorSwitch('feedback',this)">Feedback</button>
+        <button class="att-tab" data-oor="cenrich" onclick="oorSwitch('cenrich',this)">Controlled Enrichment</button>
+        <button class="att-tab" data-oor="import" onclick="oorSwitch('import',this)">Import &amp; Generate</button>
+        <button class="att-tab" data-oor="master" onclick="oorSwitch('master',this)">Master Data</button>
+      </div>
+      <div id="oor-body"></div>
     </div>
 
     <!-- ATTENDANCE TRACKER -->
@@ -730,6 +771,7 @@ const NAV_ITEMS=[
   {id:'approval',label:'Approvals',group:'TA Tracker',taSub:true,icon:'<path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',roles:['admin','authorizer'],notif:true},
   {id:'orders',label:'Order Tracker',group:'Logistics',icon:'<rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',roles:['admin','logistics']},
   {id:'packing',label:'Sample Packing',group:'Logistics',icon:'<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/>',roles:['admin','logistics']},
+  {id:'oor',label:'Open Order Report',group:'Logistics',icon:'<path d="M3 3v18h18"/><path d="M7 15l3-4 3 3 4-6"/><circle cx="7" cy="15" r="0.5"/>',roles:['admin','logistics']},
   {id:'attendance',label:'Attendance',group:'Attendance',icon:'<path d="M8 2v4M16 2v4"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/>',roles:['admin','authorizer','teamleader']},
   {id:'masterdata',label:'Master Data',group:'Admin',icon:'<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',roles:['admin','authorizer']},
   {id:'users',label:'User Accounts',group:'Admin',icon:'<path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>',roles:['admin']},
@@ -1164,7 +1206,7 @@ function downloadChartsTable(){
 }
 
 // ═══ NAV ═══
-const PAGE_META={dashboard:['Dashboard','FCE performance overview'],visitlog:['Visit Log','All daily visit records'],charts:['Charts','Visual analytics & summary table'],perfce:['Per FCE','Individual FCE breakdown'],addentry:['Add Entry','Record a new FCE visit'],approval:['Approvals','Review and approve TA claims'],masterdata:['Master Data','Manage lists used in forms'],users:['User Accounts','Manage user access'],orders:['Order Tracker','Swatch collection & sample delivery'],packing:['Sample Packing','Delivery notes, stickers & trip schedules'],attendance:['Attendance Tracker','Daily attendance, dashboards & Packer bonus']};
+const PAGE_META={dashboard:['Dashboard','FCE performance overview'],visitlog:['Visit Log','All daily visit records'],charts:['Charts','Visual analytics & summary table'],perfce:['Per FCE','Individual FCE breakdown'],addentry:['Add Entry','Record a new FCE visit'],approval:['Approvals','Review and approve TA claims'],masterdata:['Master Data','Manage lists used in forms'],users:['User Accounts','Manage user access'],orders:['Order Tracker','Swatch collection & sample delivery'],packing:['Sample Packing','Delivery notes, stickers & trip schedules'],oor:['Open Order Report','Open sample-order pipeline, ageing & SLA'],attendance:['Attendance Tracker','Daily attendance, dashboards & Packer bonus']};
 let activePage='dashboard';
 function showPage(name,btn){
   if(!canSee(name)){ showToast('You don\'t have access to this page.','err'); return; }
@@ -1203,6 +1245,7 @@ function rerenderActive(){
   if(name==='users')renderUsers();
   if(name==='orders')renderOrders();
   if(name==='packing')pkRender();
+  if(name==='oor')oorRender();
   if(name==='attendance')attRender();
   checkNotifDot();
 }
@@ -2150,6 +2193,416 @@ async function pkClearImport(){
   catch(e){ if(st)st.innerHTML='<span style="color:var(--red);">Clear failed: '+attEsc(e.message)+'</span>'; }
 }
 function pkLoadSheetJS(){ return new Promise((res,rej)=>{ if(window.XLSX)return res(); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=()=>res(); s.onerror=()=>rej(new Error('Could not load the spreadsheet reader (check internet).')); document.head.appendChild(s); }); }
+
+/* ════════════════════════════════════════════════════════════
+   OPEN ORDER REPORT
+   ════════════════════════════════════════════════════════════ */
+const OOR={ tab:'summary', plant:'all', loaded:false,
+  custMap:null, artMap:null, custCount:0, artCount:0, custUpd:'', artUpd:'',
+  refs:{gt:new Map(), fg:new Map(), recipe:new Map()}, p1:[], refMeta:{},
+  rawRows:null, data:null, charts:{}, f:{status:'',group:'',plant:'',brand:'',q:''} };
+const OOR_STAGES=[
+  {key:'Yet to Enrich',     col:'#7b8aa6'},
+  {key:'Lab Processing',    col:'#3b82f6'},
+  {key:'Bulk Processing',   col:'#e0892b'},
+  {key:'Sent for Hub Despatch', col:'#10b981'}
+];
+const OOR_AGE_ORDER=['1) 0-3 Days','2) 4-5 Days','3) 6-7 Days','4) 8-10 Days','5) 10+ Days'];
+
+// ---- small helpers ----
+function oorStr(v){ if(v==null)return ''; const s=(''+v).trim(); return (s==='--'||s==='-'||s.toLowerCase()==='null')?'':s; }
+function oorNum(v){ if(v==null)return 0; const s=(''+v).replace(/,/g,'').trim(); if(s===''||s==='--')return 0; const n=parseFloat(s); return isNaN(n)?0:n; }
+function oorKey(s){ return oorStr(s).toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function oorArticle(material){ return oorStr(material).split('-')[0].replace(/[.\s]+$/,'').toUpperCase(); }
+function oorDate(v){ if(v instanceof Date && !isNaN(v))return v;
+  const s=oorStr(v); if(!s)return null;
+  // try dd-mm-yyyy or dd/mm/yyyy [time]
+  let m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/); if(m)return new Date(+m[3],+m[2]-1,+m[1]);
+  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m)return new Date(+m[1],+m[2]-1,+m[3]);
+  const d=new Date(s); return isNaN(d)?null:d; }
+function oorDaysAgo(d){ if(!d)return null; const t=new Date(); t.setHours(0,0,0,0); const x=new Date(d); x.setHours(0,0,0,0); return Math.round((t-x)/86400000); }
+function oorAgeGroup(days){ if(days==null)return ''; if(days<=3)return '1) 0-3 Days'; if(days<=5)return '2) 4-5 Days'; if(days<=7)return '3) 6-7 Days'; if(days<=10)return '4) 8-10 Days'; return '5) 10+ Days'; }
+// tolerant header -> index resolver
+function oorIndexer(headers){ const norm=h=>(''+h).toLowerCase().replace(/[^a-z0-9]/g,''); const map={}; headers.forEach((h,i)=>{ if(h!=null&&map[norm(h)]===undefined)map[norm(h)]=i; });
+  return (...names)=>{ for(const n of names){ const k=norm(n); if(map[k]!==undefined)return map[k]; } 
+    for(const n of names){ const k=norm(n); for(const kk in map){ if(kk.startsWith(k)||kk.includes(k))return map[kk]; } } return -1; }; }
+async function oorReadSheet(file, sheetName){ await pkLoadSheetJS(); const buf=await file.arrayBuffer();
+  const wb=XLSX.read(new Uint8Array(buf),{type:'array',cellDates:true});
+  const sn=sheetName&&wb.SheetNames.includes(sheetName)?sheetName:wb.SheetNames[0];
+  return {wb, rows:XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:null})}; }
+
+// ---- master data (cloud) ----
+async function dbOorLoadMaster(){
+  try{ const {data,error}=await sb.from('oor_master').select('*').eq('id',1).maybeSingle(); if(error)throw error;
+    const cm=(data&&data.customer_map)||[], at=(data&&data.art_tkt)||[];
+    oorBuildMaster(cm,at); OOR.custUpd=data&&data.cust_updated||''; OOR.artUpd=data&&data.art_updated||'';
+    try{ lsSet('oor_master_cache',{cm,at,cu:OOR.custUpd,au:OOR.artUpd}); }catch(e){}
+  }catch(e){ const c=lsGet('oor_master_cache',null); if(c){ oorBuildMaster(c.cm||[],c.at||[]); OOR.custUpd=c.cu||''; OOR.artUpd=c.au||''; } else { oorBuildMaster([],[]); } }
+}
+function oorBuildMaster(cm,at){
+  OOR.custMap=new Map(); cm.forEach(r=>OOR.custMap.set(oorKey(r[0]),{zone:r[1]||'',salesRep:r[2]||'',csRep:r[3]||'',fce:r[4]||'',name:r[5]||''}));
+  OOR.artMap=new Map(); at.forEach(r=>{ const k=oorKey(r[0]); if(!OOR.artMap.has(k))OOR.artMap.set(k,{gt:r[1]||'',tex:r[2]||'',tkt:r[3]||'',brand:r[4]||''}); });
+  OOR.custCount=cm.length; OOR.artCount=at.length;
+}
+async function dbOorSaveCust(arr){ const {error}=await sb.from('oor_master').upsert({id:1,customer_map:arr,cust_updated:new Date().toISOString()}); if(error)throw error; }
+async function dbOorSaveArt(arr){ const {error}=await sb.from('oor_master').upsert({id:1,art_tkt:arr,art_updated:new Date().toISOString()}); if(error)throw error; }
+
+// ════════ ROUTER ════════
+async function oorRender(){
+  if(!OOR.loaded){ document.getElementById('oor-body').innerHTML='<div class="card" style="padding:30px;text-align:center;color:var(--muted);">Loading master data…</div>'; await dbOorLoadMaster(); OOR.loaded=true; }
+  oorRouter();
+}
+function oorSwitch(tab,btn){ OOR.tab=tab; document.querySelectorAll('#oor-tabs .att-tab').forEach(b=>b.classList.remove('active')); if(btn)btn.classList.add('active'); oorRouter(); }
+function oorRouter(){
+  const b=document.getElementById('oor-body'); if(!b)return;
+  if(OOR.tab==='master')return oorRenderMaster();
+  if(OOR.tab==='import')return oorRenderImport();
+  if(!OOR.data){ b.innerHTML=`<div class="card" style="padding:34px;text-align:center;">
+     <div style="font-size:15px;font-weight:700;margin-bottom:6px;">No report generated yet</div>
+     <div style="color:var(--muted);font-size:13px;margin-bottom:16px;">Upload today's <b>System Raw Data</b> in <b>Import &amp; Generate</b>, then generate the report.${OOR.custCount?'':' First, add the <b>Master Data</b> (Customer Mapping &amp; ART/TKT).'}</div>
+     <button class="btn btn-primary btn-sm" onclick="oorSwitch('import',document.querySelector('[data-oor=import]'))">Go to Import &amp; Generate</button></div>`; return; }
+  if(OOR.tab==='summary')return oorRenderSummary();
+  if(OOR.tab==='orders')return oorRenderOrders();
+  if(OOR.tab==='p1')return oorRenderP1();
+  if(OOR.tab==='dtm')return oorRenderDTM();
+  if(OOR.tab==='feedback')return oorRenderFeedback();
+  if(OOR.tab==='cenrich')return oorRenderCEnrich();
+}
+
+// ════════ ENRICH + GENERATE ════════
+function oorEnrichRow(r,ix){
+  const cust=oorStr(r[ix.cust]); const rawMat=oorStr(r[ix.material]); const article=oorArticle(rawMat);
+  const cm=OOR.custMap.get(oorKey(cust))||{}; const am=OOR.artMap.get(oorKey(article))||{};
+  const creation=oorDate(r[ix.creation]); const cAge=oorDaysAgo(creation);
+  const enrAtRaw=oorStr(r[ix.enriched]); const enrDate=oorDate(r[ix.enriched]); const enriched=!!enrAtRaw;
+  const eAge=enriched?oorDaysAgo(enrDate):null;
+  const source=oorStr(r[ix.source]); const shipped=oorNum(r[ix.shipped]);
+  const oStatus=oorStr(r[ix.ostatus]);
+  // ---- Real Order Status (confirmed rule) ----
+  let real;
+  if(/warehouse/i.test(source)) real='Bulk Processing';
+  else if(!enriched) real='Yet to Enrich';
+  else { const despatched = shipped>0 && /partial|despatch|deliver/i.test(oStatus); real=despatched?'Sent for Hub Despatch':'Lab Processing'; }
+  const gt=am.gt||''; const gtk=oorKey(gt); const gs=OOR.refs.gt.get(gtk)||{};
+  const shade=oorStr(r[ix.shade]); const fg=OOR.refs.fg.get(oorKey(rawMat))||OOR.refs.fg.get(oorKey(article+'-'+shade))||{};
+  const rec=OOR.refs.recipe.get(oorKey(rawMat))||OOR.refs.recipe.get(oorKey(article+'-'+shade))||{};
+  return {
+    orderNo:oorStr(r[ix.order]), lineNo:oorStr(r[ix.line]),
+    customerCode:cust, customer:oorStr(r[ix.custname])||cm.name, shipTo:oorStr(r[ix.shipto]),
+    requester:oorStr(r[ix.req]), buyer:oorStr(r[ix.buyer]),
+    article, brand:oorStr(r[ix.brand]), sizeTkt:oorStr(r[ix.sizetkt]),
+    shade, finalShade:oorStr(r[ix.finalshade]), qty:oorNum(r[ix.qty]),
+    orderStatus:oStatus, lineStatus:oorStr(r[ix.lstatus]), feedbackStatus:oorStr(r[ix.feedback]),
+    creationDate:creation, createdAge:cAge, createdGroup:oorAgeGroup(cAge),
+    enrichedAt:enrDate, enrichedAge:enriched?eAge:'Yet to Enrich',
+    source, supplyPlant:oorStr(r[ix.supply]), deliveryPlant:oorStr(r[ix.delivery]),
+    requestType:oorStr(r[ix.reqtype]), purposeType:oorStr(r[ix.purpose]),
+    shadeScenario:oorStr(r[ix.scenario]), season:oorStr(r[ix.season]), styleNo:oorStr(r[ix.style]),
+    shipped, realStatus:real,
+    zone:cm.zone||'', salesRep:cm.salesRep||'', csRep:cm.csRep||'', fce:cm.fce||'',
+    gt, tex:am.tex||'', tkt:am.tkt||'',
+    gtBD11_02:gs.b11_02, gtBD12_02:gs.b12_02, gtBD11_RS:gs.b11_rs, gtBD12_RS:gs.b12_rs,
+    fgFreeBD11:fg.free11, fgFreeBD12:fg.free12,
+    recBD11:rec.bd11||'', recBD12:rec.bd12||''
+  };
+}
+function oorGenerate(){
+  if(!OOR.rawRows){ showToast('Upload the System Raw Data file first.','err'); return; }
+  if(!OOR.custCount){ showToast('Add Customer Mapping in Master Data first.','err'); return; }
+  const headers=OOR.rawRows[0]; const find=oorIndexer(headers);
+  const ix={ cust:find('Customer Code'), custname:find('Customer Name'), shipto:find('Ship to Party Name'),
+    req:find('Requester'), buyer:find('Business Principal Name','Buyer'),
+    order:find('Customer Order Ref. No.','Customer Order Ref'), line:find('Line No.'),
+    material:find('Coats Material No.'), brand:find('Brand'), sizetkt:find('Size/Tkt'),
+    shade:find('Shade Code'), finalshade:find('Final Shade'), qty:find('Ordered Qty'),
+    ostatus:find('Order Status'), lstatus:find('Line Status'), feedback:find('Feedback Status'),
+    creation:find('Creation Date'), enriched:find('Enriched At'), source:find('Source of Supply'),
+    supply:find('Supply Plant'), delivery:find('Delivery Plant'),
+    reqtype:find('Request Type'), purpose:find('Purpose Type'), scenario:find('Shade Scenario'),
+    season:find('Season'), style:find('StyleNo','Production'), shipped:find('Qty(Shipped Quantity)','Shipped') };
+  const out=[]; for(let i=1;i<OOR.rawRows.length;i++){ const r=OOR.rawRows[i]; if(!r||r[ix.order]==null&&r[ix.material]==null)continue; out.push(oorEnrichRow(r,ix)); }
+  OOR.data=out;
+  const miss=out.filter(o=>!o.zone).length;
+  showToast(`Report generated · ${out.length} open lines${miss?` · ${miss} without a customer-map match`:''}.`);
+  OOR.tab='summary'; document.querySelectorAll('#oor-tabs .att-tab').forEach(b=>b.classList.toggle('active',b.dataset.oor==='summary'));
+  oorRouter();
+}
+function oorScoped(){ const p=OOR.plant; return p==='all'?OOR.data:OOR.data.filter(o=>o.supplyPlant===p); }
+
+// ════════ SUMMARY ════════
+function oorRenderSummary(){
+  const d=oorScoped();
+  const byStatus={}; OOR_STAGES.forEach(s=>byStatus[s.key]=0); d.forEach(o=>{ if(byStatus[o.realStatus]!=null)byStatus[o.realStatus]++; });
+  const inProc=byStatus['Yet to Enrich']+byStatus['Lab Processing']+byStatus['Bulk Processing'];
+  const total=d.length;
+  // pivot status x supply plant
+  const plants=OOR.plant==='all'?['BD11','BD12']:[OOR.plant];
+  const piv={}; OOR_STAGES.forEach(s=>{ piv[s.key]={BD11:0,BD12:0}; });
+  d.forEach(o=>{ if(piv[o.realStatus]&&(o.supplyPlant==='BD11'||o.supplyPlant==='BD12'))piv[o.realStatus][o.supplyPlant]++; });
+  // aging x delivery plant
+  const ageRows=OOR_AGE_ORDER.map(g=>({g, n:d.filter(o=>o.createdGroup===g).length}));
+  const within=d.filter(o=>o.createdGroup===OOR_AGE_ORDER[0]).length;
+  const late=d.filter(o=>o.createdGroup===OOR_AGE_ORDER[3]||o.createdGroup===OOR_AGE_ORDER[4]).length;
+  const slaPct=total?Math.round(within/total*100):0;
+  const dtm=d.filter(o=>/dtm/i.test(o.shadeScenario)).length;
+  const plLabel={all:'All plants (BD11 + BD12)',BD11:'BD11 · Chittagong',BD12:'BD12 · Dhaka'};
+
+  const pipe=OOR_STAGES.map(s=>{ const v=byStatus[s.key]; const pct=inProc&&s.key!=='Sent for Hub Despatch'?Math.round(v/inProc*100):0;
+    return `<div class="oor-stage" style="--c:${s.col}"><div class="lab"><span class="dot"></span>${s.key}</div><div class="v">${v.toLocaleString()}</div><div class="sub">${s.key==='Sent for Hub Despatch'?'leaving the pipeline':pct+'% of in-process'}</div><div class="arr">→</div></div>`; }).join('');
+
+  const kpis=[
+    ['Total open lines',total.toLocaleString(),plLabel[OOR.plant]],
+    ['Within SLA (0–3d)',slaPct+'%',within.toLocaleString()+' lines on time'],
+    ['Ageing 8+ days',late.toLocaleString(),'need escalation'],
+    ['Yet to enrich',byStatus['Yet to Enrich'].toLocaleString(),'waiting at intake'],
+    ['DTM pending',dtm.toLocaleString(),'dye-to-match']
+  ].map(k=>`<div class="att-stat"><div class="v">${k[1]}</div><div class="l">${k[0]}</div><div class="oor-mini" style="margin-top:2px;">${k[2]}</div></div>`).join('');
+
+  // pivot table
+  const cols=plants.concat(['Total']);
+  let ph=`<thead><tr><th>Status</th>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
+  const tot={BD11:0,BD12:0,Total:0};
+  let pb='<tbody>'+OOR_STAGES.map(s=>{ const o=piv[s.key]; const t=(OOR.plant==='all'?o.BD11+o.BD12:o[OOR.plant]); tot.BD11+=o.BD11;tot.BD12+=o.BD12;tot.Total+=t;
+    const cells=cols.map(c=>`<td class="mono">${(c==='Total'?t:o[c]).toLocaleString()}</td>`).join('');
+    return `<tr><td><span class="oor-chip" style="background:${s.col}"></span>${s.key}</td>${cells}</tr>`; }).join('')+'</tbody>';
+  let pf=`<tfoot><tr><td>Total</td>${cols.map(c=>`<td class="mono">${(c==='Total'?tot.Total:tot[c]).toLocaleString()}</td>`).join('')}</tr></tfoot>`;
+
+  document.getElementById('oor-body').innerHTML=`
+   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+     <div class="att-tabs" style="margin:0;">
+       <button class="att-tab ${OOR.plant==='all'?'active':''}" onclick="oorSetPlant('all')">All plants</button>
+       <button class="att-tab ${OOR.plant==='BD11'?'active':''}" onclick="oorSetPlant('BD11')">BD11 · Chittagong</button>
+       <button class="att-tab ${OOR.plant==='BD12'?'active':''}" onclick="oorSetPlant('BD12')">BD12 · Dhaka</button>
+     </div>
+     <button class="btn btn-ghost btn-sm" onclick="oorExport()">⬇ Export All Open Orders (CSV)</button>
+   </div>
+   <div class="form-label" style="margin:4px 0;">Order pipeline · ${plLabel[OOR.plant]}</div>
+   <div class="oor-pipe">${pipe}</div>
+   <div class="att-stat-row" style="margin:14px 0;">${kpis}</div>
+   <div class="oor-grid2">
+     <div class="card"><div class="card-header"><div><div class="card-title">Status × Supply Plant</div><div class="card-sub">Open lines by where they are produced</div></div></div>
+       <div style="overflow:auto;"><table class="oor-pivot">${ph}${pb}${pf}</table></div></div>
+     <div class="card"><div class="card-header"><div><div class="card-title">Ageing vs SLA</div><div class="card-sub">Created-age buckets · target clear within 0–3 days</div></div></div>
+       <div style="padding:14px;"><div style="position:relative;height:230px;"><canvas id="oor-age"></canvas></div></div></div>
+   </div>
+   <div class="form-label" style="margin:16px 0 4px;">Breakdowns</div>
+   <div class="oor-grid3">
+     <div class="card"><div class="card-header"><div><div class="card-title">Top brands</div></div></div><div style="padding:14px;"><div style="position:relative;height:210px;"><canvas id="oor-brand"></canvas></div></div></div>
+     <div class="card"><div class="card-header"><div><div class="card-title">Purpose of sample</div></div></div><div style="padding:14px;"><div style="position:relative;height:210px;"><canvas id="oor-purpose"></canvas></div></div></div>
+     <div class="card"><div class="card-header"><div><div class="card-title">Route &amp; shade</div></div></div><div style="padding:14px;"><div style="position:relative;height:210px;"><canvas id="oor-route"></canvas></div></div></div>
+   </div>`;
+  oorBuildCharts(d, ageRows);
+}
+function oorSetPlant(p){ OOR.plant=p; oorRenderSummary(); }
+function oorMkChart(id,cfg){ if(OOR.charts[id])OOR.charts[id].destroy(); const cv=document.getElementById(id); if(cv)OOR.charts[id]=new Chart(cv,cfg); }
+function oorCount(d,field,top){ const m={}; d.forEach(o=>{ const k=o[field]||'—'; m[k]=(m[k]||0)+1; }); let e=Object.entries(m).sort((a,b)=>b[1]-a[1]); if(top)e=e.slice(0,top); return e; }
+function oorBuildCharts(d, ageRows){
+  const tc='#7a7a92', gc='rgba(255,255,255,.06)';
+  const ageCols=['#10b981','#10b981','#e0892b','#d4503e','#d4503e'];
+  oorMkChart('oor-age',{type:'bar',data:{labels:OOR_AGE_ORDER.map(g=>g.replace(/^\d\)\s*/,'')),datasets:[{data:ageRows.map(a=>a.n),backgroundColor:ageCols,borderRadius:6,maxBarThickness:54}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{color:tc},grid:{color:gc},border:{display:false}},x:{ticks:{color:tc,font:{size:11}},grid:{display:false},border:{display:false}}}}});
+  const br=oorCount(d,'brand',8);
+  oorMkChart('oor-brand',{type:'bar',data:{labels:br.map(b=>b[0]),datasets:[{data:br.map(b=>b[1]),backgroundColor:'#3b82f6',borderRadius:5,maxBarThickness:16}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{color:tc},grid:{color:gc},border:{display:false}},y:{ticks:{color:tc,font:{size:10}},grid:{display:false},border:{display:false}}}}});
+  const pu=oorCount(d,'purposeType',6); const pcol=['#7c6af5','#3b82f6','#10b981','#e0892b','#e57eb3','#5baadc'];
+  oorMkChart('oor-purpose',{type:'doughnut',data:{labels:pu.map(p=>p[0]),datasets:[{data:pu.map(p=>p[1]),backgroundColor:pcol,borderWidth:1.5,borderColor:'#12121c'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{position:'right',labels:{color:tc,boxWidth:10,font:{size:10}}}}}});
+  const srcLab=d.filter(o=>/lab/i.test(o.source)).length, srcWh=d.filter(o=>/warehouse/i.test(o.source)).length;
+  const shKn=d.filter(o=>!/dtm/i.test(o.shadeScenario)).length, shD=d.filter(o=>/dtm/i.test(o.shadeScenario)).length;
+  const rqS=d.filter(o=>/sew/i.test(o.requestType)).length, rqC=d.filter(o=>/colou?r|match/i.test(o.requestType)).length;
+  oorMkChart('oor-route',{type:'bar',data:{labels:['Source','Shade','Request'],datasets:[
+    {label:'A',data:[srcLab,shKn,rqS],backgroundColor:'#3b82f6',borderRadius:4},
+    {label:'B',data:[srcWh,shD,rqC],backgroundColor:'#9db4e8',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>['Lab / Known / Sewing','Warehouse / DTM / Colour-match'][c[0].datasetIndex]}}},scales:{x:{stacked:true,ticks:{color:tc},grid:{display:false},border:{display:false}},y:{stacked:true,beginAtZero:true,ticks:{color:tc},grid:{color:gc},border:{display:false}}}}});
+}
+
+// ════════ ALL OPEN ORDERS ════════
+function oorStatusColor(s){ const x=OOR_STAGES.find(z=>z.key===s); return x?x.col:'#7a7a92'; }
+function oorAgeClass(g){ if(g===OOR_AGE_ORDER[0])return 'oor-pill'; if(g===OOR_AGE_ORDER[1]||g===OOR_AGE_ORDER[2])return 'oor-pill'; return 'oor-pill'; }
+function oorAgeStyle(g){ if(g===OOR_AGE_ORDER[0])return 'background:rgba(16,185,129,.16);color:#5fe0bf;'; if(g===OOR_AGE_ORDER[1]||g===OOR_AGE_ORDER[2])return 'background:rgba(224,137,43,.18);color:#f0b160;'; return 'background:rgba(212,80,62,.18);color:#f08a7a;'; }
+function oorRenderOrders(){
+  const brands=[...new Set(OOR.data.map(o=>o.brand).filter(Boolean))].sort();
+  const f=OOR.f;
+  const rows=OOR.data.filter(o=>{
+    if(OOR.plant!=='all'&&o.supplyPlant!==OOR.plant)return false;
+    if(f.status&&o.realStatus!==f.status)return false;
+    if(f.group&&o.createdGroup!==f.group)return false;
+    if(f.brand&&o.brand!==f.brand)return false;
+    if(f.q){ const q=f.q.toLowerCase(); if(!((o.orderNo+' '+o.customer+' '+o.buyer+' '+o.article).toLowerCase().includes(q)))return false; }
+    return true; });
+  const body=rows.slice(0,400).map(o=>`<tr>
+    <td><b>${attEsc(o.orderNo)}</b> · ${attEsc(o.lineNo)}</td>
+    <td>${attEsc(o.customer)}</td><td>${attEsc(o.buyer)}</td>
+    <td>${attEsc(o.brand)} <span class="oor-mini mono">${attEsc(o.article)}</span></td>
+    <td><span class="oor-badge" style="background:${oorStatusColor(o.realStatus)}22;color:${oorStatusColor(o.realStatus)}"><span class="bd" style="background:${oorStatusColor(o.realStatus)}"></span>${o.realStatus}</span></td>
+    <td>${attEsc(o.supplyPlant)}</td>
+    <td><span class="${oorAgeClass(o.createdGroup)}" style="${oorAgeStyle(o.createdGroup)}">${o.createdGroup.replace(/^\d\)\s*/,'')||'—'}</span></td>
+    <td class="mono">${o.enrichedAge}</td>
+    <td>${attEsc(o.zone||'—')}</td><td>${attEsc(o.fce||'—')}</td>
+    <td class="mono">${o.gt||'—'}</td><td>${attEsc(o.shadeScenario||'—')}</td></tr>`).join('')
+    ||`<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:22px;">No lines match these filters.</td></tr>`;
+  document.getElementById('oor-body').innerHTML=`
+   <div class="att-filters" style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+     <select class="filter-sel" onchange="OOR.f.status=this.value;oorRenderOrders()"><option value="">All statuses</option>${OOR_STAGES.map(s=>`<option ${f.status===s.key?'selected':''}>${s.key}</option>`).join('')}</select>
+     <select class="filter-sel" onchange="OOR.f.group=this.value;oorRenderOrders()"><option value="">All ages</option>${OOR_AGE_ORDER.map(g=>`<option value="${g}" ${f.group===g?'selected':''}>${g.replace(/^\d\)\s*/,'')}</option>`).join('')}</select>
+     <select class="filter-sel" onchange="OOR.f.brand=this.value;oorRenderOrders()"><option value="">All brands</option>${brands.map(b=>`<option ${f.brand===b?'selected':''}>${attEsc(b)}</option>`).join('')}</select>
+     <input class="filter-sel" style="min-width:220px;flex:1;" placeholder="Search order, customer, buyer, article…" value="${attEsc(f.q)}" oninput="OOR.f.q=this.value;oorRenderOrders()"/>
+     <button class="btn btn-ghost btn-sm" onclick="oorExport()">⬇ CSV</button>
+   </div>
+   <div class="oor-mini" style="margin-bottom:8px;">Showing ${Math.min(rows.length,400).toLocaleString()} of ${rows.length.toLocaleString()} lines${rows.length>400?' (first 400 — refine filters or export for all)':''}.</div>
+   <div class="card" style="overflow:auto;"><table style="min-width:1050px;"><thead><tr>
+     <th>Order · Line</th><th>Customer</th><th>Buyer</th><th>Brand · Article</th><th>Status</th><th>Plant</th><th>Created age</th><th>Enr. age</th><th>Zone</th><th>FCE</th><th>GT code</th><th>Shade</th>
+   </tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function oorExport(){
+  if(!OOR.data){ showToast('Generate the report first.','err'); return; }
+  const cols=[['orderNo','Order No'],['lineNo','Line'],['customerCode','Customer Code'],['customer','Customer'],['buyer','Buyer'],['article','Article'],['brand','Brand'],['shade','Shade'],['qty','Qty'],['realStatus','Real Order Status'],['orderStatus','Order Status'],['createdGroup','Created Age Group'],['createdAge','Created Age'],['enrichedAge','Enriched Age'],['source','Source'],['supplyPlant','Supply Plant'],['deliveryPlant','Delivery Plant'],['shadeScenario','Shade Scenario'],['purposeType','Purpose'],['requestType','Request'],['zone','Zone'],['salesRep','Sales Rep'],['fce','FCE'],['gt','GT Code'],['tex','Tex'],['tkt','TKT'],['gtBD11_02','GT BD11(02)'],['gtBD12_02','GT BD12(02)'],['fgFreeBD11','FG Free BD11'],['fgFreeBD12','FG Free BD12'],['recBD11','Recipe BD11'],['recBD12','Recipe BD12']];
+  const esc=v=>{ const s=(v==null?'':''+v).replace(/"/g,'""'); return /[",\n]/.test(s)?'"'+s+'"':s; };
+  const lines=[cols.map(c=>c[1]).join(',')].concat(OOR.data.map(o=>cols.map(c=>esc(o[c[0]])).join(',')));
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Open_Order_Report_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+}
+
+// ════════ P1 / DTM / FEEDBACK / CONTROLLED ENRICHMENT ════════
+function oorSimpleTable(title,sub,cols,rows){
+  const body=rows.length?rows.map(r=>`<tr>${cols.map(c=>`<td${c.mono?' class="mono"':''}>${attEsc(r[c.k]==null?'':''+r[c.k])||'—'}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted);padding:22px;">No rows.</td></tr>`;
+  return `<div class="card"><div class="card-header"><div><div class="card-title">${title}</div><div class="card-sub">${sub}</div></div></div>
+    <div style="overflow:auto;"><table style="min-width:780px;"><thead><tr>${cols.map(c=>`<th>${c.t}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+function oorRenderP1(){
+  const rows=OOR.p1.length?OOR.p1:[];
+  document.getElementById('oor-body').innerHTML=(rows.length?'':`<div class="oor-mini" style="margin-bottom:10px;">No P1 file imported yet — upload it in <b>Import &amp; Generate</b>. Showing P1-flagged open lines from the report instead.</div>`)+
+    oorSimpleTable('P1 List','Priority orders'+(rows.length?' (from imported P1 file)':' — derived: oldest open lines'),
+      [{t:'Order · Line',k:'ol'},{t:'P1 Date',k:'p1date'},{t:'Customer',k:'customer'},{t:'Principal',k:'principal'},{t:'Brand',k:'brand'},{t:'Status',k:'status'},{t:'Plant',k:'plant'},{t:'ART/TKT',k:'arttkt',mono:1},{t:'GT Code',k:'gt',mono:1},{t:'BD12 GT (02)',k:'gt12',mono:1},{t:'Remarks',k:'remarks'}],
+      rows.length?rows:oorDerivedP1());
+}
+function oorDerivedP1(){ return OOR.data.filter(o=>o.realStatus!=='Sent for Hub Despatch').sort((a,b)=>(b.createdAge||0)-(a.createdAge||0)).slice(0,60).map(o=>({ol:o.orderNo+'-'+o.lineNo,p1date:'',customer:o.customer,principal:o.buyer,brand:o.brand,status:o.realStatus,plant:o.supplyPlant,arttkt:o.article,gt:o.gt,gt12:o.gtBD12_02,remarks:''})); }
+function oorRenderDTM(){
+  const rows=OOR.data.filter(o=>/dtm/i.test(o.shadeScenario)&&o.realStatus!=='Sent for Hub Despatch')
+    .sort((a,b)=>(b.createdAge||0)-(a.createdAge||0))
+    .map(o=>({ol:o.orderNo+'-'+o.lineNo,customer:o.customer,buyer:o.buyer,brand:o.brand,shade:o.shade||o.finalShade,status:o.realStatus,age:o.createdAge,fce:o.fce}));
+  document.getElementById('oor-body').innerHTML=oorSimpleTable('DTM Pending Follow-up','Dye-to-match lines not yet despatched · '+rows.length+' lines',
+    [{t:'Order · Line',k:'ol'},{t:'Customer',k:'customer'},{t:'Buyer',k:'buyer'},{t:'Brand',k:'brand'},{t:'Shade',k:'shade'},{t:'Status',k:'status'},{t:'Age (days)',k:'age',mono:1},{t:'FCE',k:'fce'}],rows);
+}
+function oorRenderFeedback(){
+  const rows=OOR.data.filter(o=>o.feedbackStatus&&o.feedbackStatus.toLowerCase()!=='').map(o=>({ol:o.orderNo+'-'+o.lineNo,customer:o.customer,buyer:o.buyer,brand:o.brand,fb:o.feedbackStatus,plant:o.supplyPlant,status:o.realStatus}));
+  document.getElementById('oor-body').innerHTML=(rows.length?'':`<div class="oor-mini" style="margin-bottom:10px;">No lines carry a Feedback Status in this import.</div>`)+
+    oorSimpleTable('Feedback Orders','Lines with a feedback status set · '+rows.length+' lines',
+    [{t:'Order · Line',k:'ol'},{t:'Customer',k:'customer'},{t:'Buyer',k:'buyer'},{t:'Brand',k:'brand'},{t:'Feedback',k:'fb'},{t:'Plant',k:'plant'},{t:'Status',k:'status'}],rows);
+}
+function oorRenderCEnrich(){
+  // controlled enrichment = yet-to-enrich / lab lines with a recipe or stock signal to act on
+  const rows=OOR.data.filter(o=>o.realStatus==='Yet to Enrich'||o.realStatus==='Lab Processing')
+    .map(o=>({ol:o.orderNo+'-'+o.lineNo,customer:o.customer,brand:o.brand,article:o.article,gt:o.gt,
+      gt12:o.gtBD12_02,gt11:o.gtBD11_02,rec11:o.recBD11,rec12:o.recBD12,status:o.realStatus,age:o.createdAge}))
+    .sort((a,b)=>(b.age||0)-(a.age||0)).slice(0,300);
+  document.getElementById('oor-body').innerHTML=`<div class="oor-mini" style="margin-bottom:10px;">Lines awaiting enrichment, with GT stock and recipe availability to guide the decision. ${OOR.refs.recipe.size?'':'(Import the Recipe file for recipe columns.) '}${OOR.refs.gt.size?'':'(Import GT Stock for stock columns.)'}</div>`+
+    oorSimpleTable('Controlled Enrichment','Yet-to-enrich &amp; lab lines · top '+rows.length+' by age',
+    [{t:'Order · Line',k:'ol'},{t:'Customer',k:'customer'},{t:'Brand',k:'brand'},{t:'Article',k:'article',mono:1},{t:'GT Code',k:'gt',mono:1},{t:'GT BD11(02)',k:'gt11',mono:1},{t:'GT BD12(02)',k:'gt12',mono:1},{t:'Recipe BD11',k:'rec11'},{t:'Recipe BD12',k:'rec12'},{t:'Status',k:'status'},{t:'Age',k:'age',mono:1}],rows);
+}
+
+// ════════ IMPORT & GENERATE ════════
+function oorUploadBox(id,label,note,required){
+  const meta=OOR.refMeta[id];
+  return `<div class="oor-up ${required?'req':''}" style="text-align:left;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;"><div style="font-weight:700;font-size:13px;">${label}${required?' <span style="color:var(--accent);">• required</span>':''}</div><div class="oor-mini">${note}</div>
+      ${meta?`<div class="oor-mini" style="margin-top:4px;"><span class="ok" style="color:#52c87a;font-weight:700;">✓ ${attEsc(meta.name)}</span> · ${meta.rows.toLocaleString()} rows</div>`:''}</div>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer;">Choose file<input type="file" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="oorFile('${id}',this)"/></label>
+  </div>`;
+}
+function oorRenderImport(){
+  const ready=!!OOR.rawRows, master=OOR.custCount>0;
+  document.getElementById('oor-body').innerHTML=`
+   <div class="card" style="padding:16px;margin-bottom:12px;">
+     <div class="card-title" style="margin-bottom:2px;">Generate today's report</div>
+     <div class="card-sub" style="margin-bottom:12px;">Upload the System Raw Data export. Optionally add GT Stock, FG Stock, Recipe and the P1 list to fill stock/recipe columns. Customer Mapping &amp; ART/TKT come from <b>Master Data</b> (set once).</div>
+     <div style="display:grid;gap:10px;">
+       ${oorUploadBox('system','1 · System Raw Data','The open-order export (one row per order line).',true)}
+       ${oorUploadBox('gt','2 · GT Stock','Material → BD11/BD12 greige-thread stock (02 &amp; RS).')}
+       ${oorUploadBox('fg','3 · FG Stock','Material → finished-goods free stock per plant.')}
+       ${oorUploadBox('recipe','4 · Recipe (both plants)','Article-Ticket-Shade → recipe OK per plant (kept in browser only).')}
+       ${oorUploadBox('p1','5 · P1 List','Priority order list (Non-RCC + RCC).')}
+     </div>
+     <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+       <button class="btn btn-primary" ${ready&&master?'':'disabled'} onclick="oorGenerate()">Generate report</button>
+       ${!master?'<span class="oor-mini" style="color:#e0892b;">Add Customer Mapping in Master Data first.</span>':(!ready?'<span class="oor-mini">Upload the System Raw Data to enable.</span>':'<span class="oor-mini">Ready — '+(OOR.rawRows.length-1).toLocaleString()+' lines loaded.</span>')}
+     </div>
+   </div>`;
+}
+async function oorFile(kind,input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  try{
+    if(kind==='system'){ const {rows}=await oorReadSheet(file); OOR.rawRows=rows; OOR.refMeta.system={name:file.name,rows:rows.length-1}; showToast('System data loaded · '+(rows.length-1).toLocaleString()+' lines.'); }
+    else if(kind==='gt'){ await oorLoadGT(file); }
+    else if(kind==='fg'){ await oorLoadFG(file); }
+    else if(kind==='recipe'){ await oorLoadRecipe(file); }
+    else if(kind==='p1'){ await oorLoadP1(file); }
+    if(OOR.data && kind!=='system'){ /* refresh enrich if already generated */ }
+    oorRenderImport();
+  }catch(e){ showToast('Could not read '+file.name+': '+e.message,'err'); }
+}
+async function oorLoadGT(file){ await pkLoadSheetJS(); const buf=await file.arrayBuffer(); const wb=XLSX.read(new Uint8Array(buf),{type:'array'}); let n=0;
+  wb.SheetNames.forEach(sn=>{ const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null}); if(!rows.length)return; const ix=oorIndexer(rows[0]);
+    const mi=ix('Material'),b11=ix('BD11 (02)','BD11 02'),b12=ix('BD12 (02)','BD12 02'),r11=ix('BD11 (RS)','BD11 RS'),r12=ix('BD12 (RS)','BD12 RS');
+    for(let i=1;i<rows.length;i++){ const r=rows[i]; const k=oorKey(r[mi]); if(!k)continue; OOR.refs.gt.set(k,{b11_02:oorNum(r[b11]),b12_02:oorNum(r[b12]),b11_rs:oorNum(r[r11]),b12_rs:oorNum(r[r12])}); n++; } });
+  OOR.refMeta.gt={name:file.name,rows:n}; showToast('GT stock loaded · '+n.toLocaleString()+' materials.'); }
+async function oorLoadFG(file){ const {rows}=await oorReadSheet(file); const ix=oorIndexer(rows[0]);
+  const mi=ix('Material'),f11=ix('BD11 Free Stock'),f12=ix('BD12 Free Stock'); let n=0;
+  for(let i=1;i<rows.length;i++){ const r=rows[i]; const k=oorKey(r[mi]); if(!k)continue; OOR.refs.fg.set(k,{free11:oorNum(r[f11]),free12:oorNum(r[f12])}); n++; }
+  OOR.refMeta.fg={name:file.name,rows:n}; showToast('FG stock loaded · '+n.toLocaleString()+' rows.'); }
+async function oorLoadRecipe(file){ const {rows}=await oorReadSheet(file); const ix=oorIndexer(rows[0]);
+  const ai=ix('Article Ticket Shade','Article'),b11=ix('BD11'),b12=ix('BD12'); let n=0; OOR.refs.recipe=new Map();
+  for(let i=1;i<rows.length;i++){ const r=rows[i]; const k=oorKey(r[ai]); if(!k)continue; OOR.refs.recipe.set(k,{bd11:oorStr(r[b11]),bd12:oorStr(r[b12])}); n++; }
+  OOR.refMeta.recipe={name:file.name,rows:n}; showToast('Recipe loaded · '+n.toLocaleString()+' keys (in-browser).'); }
+async function oorLoadP1(file){ await pkLoadSheetJS(); const buf=await file.arrayBuffer(); const wb=XLSX.read(new Uint8Array(buf),{type:'array',cellDates:true}); const all=[];
+  wb.SheetNames.forEach(sn=>{ const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:null}); if(rows.length<2)return; const ix=oorIndexer(rows[0]);
+    const c={ol:ix('(RS)Order-Line','Order-Line'),order:ix('OrderNo'),line:ix('LineNo'),p1:ix('P1 Submission Date','P1 Date'),cust:ix('Customer'),prin:ix('Principal'),st:ix('Real Order Status'),pl:ix('Supply Plant'),art:ix('ART/TKT'),gt:ix('GT Code'),gt12:ix('BD12 GT Stock (02)'),rem:ix('Remarks')};
+    for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r||r[c.order]==null)continue;
+      const pd=oorDate(r[c.p1]); all.push({ol:oorStr(r[c.ol])||(oorStr(r[c.order])+'-'+oorStr(r[c.line])),p1date:pd?fmtDate(pd):oorStr(r[c.p1]),customer:oorStr(r[c.cust]),principal:oorStr(r[c.prin]),brand:oorStr(rows[i][ix('Brand')]),status:oorStr(r[c.st]),plant:oorStr(r[c.pl]),arttkt:oorStr(r[c.art]),gt:oorStr(r[c.gt]),gt12:oorStr(r[c.gt12]),remarks:oorStr(r[c.rem])||sn}); } });
+  OOR.p1=all; OOR.refMeta.p1={name:file.name,rows:all.length}; showToast('P1 list loaded · '+all.length+' rows.'); }
+
+// ════════ MASTER DATA ════════
+function oorRenderMaster(){
+  const cu=OOR.custUpd?fmtDate(OOR.custUpd):'—', au=OOR.artUpd?fmtDate(OOR.artUpd):'—';
+  document.getElementById('oor-body').innerHTML=`
+   <div class="oor-mini" style="margin-bottom:12px;">These two lookups change only 2–3 times a year. Upload once; they’re stored in the cloud and shared with every PC. Re-upload to replace.</div>
+   <div class="oor-grid2">
+     <div class="card" style="padding:16px;"><div class="card-title">Customer Mapping</div>
+       <div class="card-sub" style="margin-bottom:10px;">Customer Code → Zone · Sales Rep · CS-Rep · FCE</div>
+       <div class="oor-file"><div><div style="font-weight:700;">${OOR.custCount?OOR.custCount.toLocaleString()+' customers':'Not loaded yet'}</div><div class="meta">Last updated: ${cu}</div></div>
+         <label class="btn btn-primary btn-sm" style="cursor:pointer;">${OOR.custCount?'Replace':'Upload'}<input type="file" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="oorMasterFile('cust',this)"/></label></div>
+       <div class="oor-mini">Expected columns: Sold to Party, Zone, Sales Rep Des, CS-Rep, FCE Name.</div>
+     </div>
+     <div class="card" style="padding:16px;"><div class="card-title">ART / TKT List</div>
+       <div class="card-sub" style="margin-bottom:10px;">Article → GT code · Tex · TKT · Brand</div>
+       <div class="oor-file"><div><div style="font-weight:700;">${OOR.artCount?OOR.artCount.toLocaleString()+' articles':'Not loaded yet'}</div><div class="meta">Last updated: ${au}</div></div>
+         <label class="btn btn-primary btn-sm" style="cursor:pointer;">${OOR.artCount?'Replace':'Upload'}<input type="file" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="oorMasterFile('art',this)"/></label></div>
+       <div class="oor-mini">Expected columns: ART TKT, GT code, Tex, TKT, Brand.</div>
+     </div>
+   </div>`;
+}
+async function oorMasterFile(kind,input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  if(!isAdmin()){ showToast('Only Super Admin can update master data.','err'); return; }
+  try{
+    const {rows}=await oorReadSheet(file); const ix=oorIndexer(rows[0]);
+    if(kind==='cust'){
+      const a=ix('Sold to Party'),z=ix('Zone'),sr=ix('Sales Rep Des','Sales Rep'),cs=ix('CS-Rep','CS Rep'),fc=ix('FCE Name'),nm=ix('Sold to Party Des','Customer Name');
+      const arr=[]; for(let i=1;i<rows.length;i++){ const r=rows[i]; const code=oorStr(r[a]); if(!code)continue; arr.push([code,oorStr(r[z]),oorStr(r[sr]),oorStr(r[cs]),oorStr(r[fc]),oorStr(r[nm])]); }
+      showToast('Saving '+arr.length.toLocaleString()+' customers…'); await dbOorSaveCust(arr); oorBuildMaster(arr, await oorCurrentArt()); OOR.custUpd=new Date().toISOString();
+      try{ lsSet('oor_master_cache',{cm:arr,at:await oorCurrentArt(),cu:OOR.custUpd,au:OOR.artUpd}); }catch(e){}
+      showToast('Customer mapping updated · shared to all PCs.');
+    } else {
+      const a=ix('ART TKT','Article'),gt=ix('GT code','GT Code'),tex=ix('Tex'),tkt=ix('TKT'),br=ix('Brand');
+      const arr=[]; for(let i=1;i<rows.length;i++){ const r=rows[i]; const art=oorStr(r[a]); if(!art)continue; arr.push([art,oorStr(r[gt]),oorStr(r[tex]),oorStr(r[tkt]),oorStr(r[br])]); }
+      showToast('Saving '+arr.length.toLocaleString()+' articles…'); await dbOorSaveArt(arr); oorBuildMaster(await oorCurrentCust(), arr); OOR.artUpd=new Date().toISOString();
+      try{ lsSet('oor_master_cache',{cm:await oorCurrentCust(),at:arr,cu:OOR.custUpd,au:OOR.artUpd}); }catch(e){}
+      showToast('ART/TKT list updated · shared to all PCs.');
+    }
+    oorRenderMaster();
+  }catch(e){ showToast('Could not save: '+e.message,'err'); }
+}
+async function oorCurrentCust(){ const c=lsGet('oor_master_cache',null); return (c&&c.cm)||[]; }
+async function oorCurrentArt(){ const c=lsGet('oor_master_cache',null); return (c&&c.at)||[]; }
 function pkSetSetting(key,val){ lsSet(key,val); showToast('Print setting saved.'); }
 function pkLoadBarcode(){ return new Promise((res,rej)=>{ if(window.JsBarcode)return res(); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js'; s.onload=()=>res(); s.onerror=()=>rej(new Error('barcode lib failed')); document.head.appendChild(s); }); }
 function pkDnOrient(){ return lsGet('sc_dn_orient','portrait'); }
