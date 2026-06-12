@@ -2356,7 +2356,8 @@ const PK_HMAP=[
  [['ship to party name'],'ship_to'],[['ship to party address'],'ship_addr'],
  [['requester mobile','requester mobile no'],'requester_mobile'],[['requester','requester name'],'requester'],
  [['business principal name','buyer','brand/buyer','buyer name'],'buyer'],
- [['customer order ref. no','customer order ref no','order no','sample order no'],'order_no'],
+ [['customer order ref. no','customer order ref no','order no'],'order_no'],
+ [['sample order no','sample order no.'],'sample_order_no'],
  [['customer reference line','customer reference line no.','customer reference line no','line no','line','lines no'],'line_no'],
  [['coats material no.','coats material no','material no'],'material_no'],
  [['brand'],'brand'],[['size/tkt','size'],'size_tkt'],[['shade code','shade'],'shade'],
@@ -2448,6 +2449,8 @@ async function pkDoImport(){
     for(let i=hdrIdx+1;i<aoa.length;i++){
       const row=aoa[i]||[]; const o={};
       headers.forEach((field,c)=>{ if(field)o[field]=row[c]; });
+      if((o.order_no==null||(''+o.order_no).trim()==='')&&o.sample_order_no!=null&&(''+o.sample_order_no).trim()!=='')o.order_no=o.sample_order_no;
+      delete o.sample_order_no; // helper only, not a DB column
       if(o.order_no==null||(''+o.order_no).trim()==='')continue;
       o.order_no=(''+o.order_no).trim();
       o.line_no=o.line_no==null?'':(''+o.line_no).trim();
