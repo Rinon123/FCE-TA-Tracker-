@@ -501,7 +501,7 @@ select.form-input option{background:var(--surface2);}
     <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="draft">Draft</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
     <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-input" id="e-notes" style="min-height:52px;"></textarea></div>
   </div></div>
-  <div class="modal-footer"><button class="btn btn-reject" style="margin-right:auto;" onclick="deleteEntryFromEdit()">Delete</button><button class="btn btn-ghost" onclick="closeModal('edit-modal')">Cancel</button><button class="btn btn-primary" onclick="saveEdit()">Save Changes</button></div>
+  <div class="modal-footer"><button class="btn btn-reject" id="edit-delete-btn" style="margin-right:auto;" onclick="deleteEntryFromEdit()">Delete</button><button class="btn btn-ghost" onclick="closeModal('edit-modal')">Cancel</button><button class="btn btn-primary" onclick="saveEdit()">Save Changes</button></div>
 </div></div>
 
 <div class="modal-overlay" id="order-modal"><div class="modal">
@@ -739,6 +739,7 @@ function isFCE(){ return currentUser&&currentUser.role==='fce'; }
 function myFCE(){ return isFCE()?currentUser.fce:null; }
 function isTeamLeader(){ return currentUser&&currentUser.role==='teamleader'; }
 function isPacker(){ return currentUser&&currentUser.role==='packer'; }
+function packerBlocked(){ if(isPacker()){ showToast('Packers have edit-only access — delete/cancel is not allowed.','err'); return true; } return false; }
 // A team leader only sees employees of their own location/zone.
 function tlLockedLoc(){ return isTeamLeader()?((currentUser.station||'').trim()):null; }
 const LOC_ALIASES={'chittagong':'chattogram','ctg':'chattogram','chattogram':'chattogram','gazipur':'gazipur','rajendrapur':'gazipur','dhaka':'dhaka h/o','dhaka h/o':'dhaka h/o','h/o':'dhaka h/o','head office':'dhaka h/o'};
@@ -971,11 +972,11 @@ function renderMyEntries(){
     let act='';
     if(e.status==='draft') act+=`<button class="btn btn-submit btn-sm" onclick="submitDraft('${e.id}')">Submit</button> `;
     if(e.status==='rejected') act+=`<span style="font-size:11px;color:var(--red);margin-right:6px;" title="${(e.rejectionReason||'').replace(/"/g,'&quot;')}">${e.rejectionReason||'Rejected'}</span>`;
-    if(e.status!=='approved') act+=`<button class="btn btn-reject btn-sm" title="Cancel / delete this entry before approval" onclick="cancelMyEntry('${e.id}')">Cancel</button>`;
+    if(e.status!=='approved') act+=`${isPacker()?'':`<button class="btn btn-reject btn-sm" title="Cancel / delete this entry before approval" onclick="cancelMyEntry('${e.id}')">Cancel</button>`}`;
     return `<tr><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td><span class="fce-chip" style="background:${fceColor(e.fce)}22;color:${fceColor(e.fce)};">${e.fce}</span></td><td style="font-size:12px;">${e.customer}</td><td class="purpose-text">${e.purpose}</td><td class="dur-text">${e.duration||'—'}</td><td class="ta-val">৳${e.claimed.toLocaleString()}</td><td>${appAmt}</td><td>${statusBadge(e.status)}</td><td style="white-space:nowrap;">${act}</td></tr>`;
   }).join('');
 }
-async function cancelMyEntry(id){
+async function cancelMyEntry(id){ if(packerBlocked())return;
   const e=getEntries().find(x=>x.id===id); if(!e)return;
   if(e.status==='approved'){ showToast('Approved entries can\'t be cancelled.','err'); return; }
   const own = isFCE()? e.fce===currentUser.fce : (e.createdBy===currentUser.id || isAuthorizer());
@@ -1026,6 +1027,7 @@ function openEditModal(id){
   document.getElementById('e-date').value=e.date; document.getElementById('e-fce').value=e.fce; document.getElementById('e-customer').value=e.customer;
   document.getElementById('e-merch').value=e.merch||''; document.getElementById('e-purpose').value=e.purpose; document.getElementById('e-duration').value=e.duration||'';
   document.getElementById('e-ta').value=e.claimed; document.getElementById('e-approved').value=e.approved!=null?e.approved:''; document.getElementById('e-status').value=e.status; document.getElementById('e-notes').value=e.notes||'';
+  { const db=document.getElementById('edit-delete-btn'); if(db)db.style.display=isPacker()?'none':''; }
   document.getElementById('edit-modal').classList.add('open');
 }
 async function saveEdit(){
@@ -1036,7 +1038,7 @@ async function saveEdit(){
   e.status=document.getElementById('e-status').value; e.notes=document.getElementById('e-notes').value; e.month=e.date.slice(0,7);
   try{ await dbUpsertEntry(entryToRow(e)); await refreshAll(); closeModal('edit-modal'); showToast('Entry updated in cloud.'); }catch(err){ showToast('Failed: '+err.message,'err'); }
 }
-async function deleteEntryFromEdit(){
+async function deleteEntryFromEdit(){ if(packerBlocked())return;
   if(!confirm('Permanently delete this entry?'))return;
   try{ await dbDeleteEntry(editingId); await refreshAll(); closeModal('edit-modal'); showToast('Entry deleted.'); }catch(err){ showToast('Failed: '+err.message,'err'); }
 }
@@ -1488,7 +1490,7 @@ function openOrderModal(id){
   if(!canSee('orders')){ showToast('You don\'t have access to Order Tracker.','err'); return; }
   editingOrderId=id||null;
   document.getElementById('order-modal-title').textContent=id?'Edit Order Entry':'New Order Entry';
-  document.getElementById('o-delete-btn').style.display=id?'inline-flex':'none';
+  document.getElementById('o-delete-btn').style.display=(id&&!isPacker())?'inline-flex':'none';
   document.getElementById('o-file-current').textContent='';
   document.getElementById('o-file').value='';
   populateOrderFce();
@@ -1560,7 +1562,7 @@ async function saveOrder(){
   }catch(e){ showToast('Save failed: '+e.message,'err'); }
   finally{ btn.disabled=false; btn.textContent='Save Order'; }
 }
-async function deleteOrder(){
+async function deleteOrder(){ if(packerBlocked())return;
   if(!editingOrderId)return;
   if(!confirm('Delete this order?'))return;
   try{
@@ -2004,6 +2006,7 @@ async function pkLoadTrips(force){ if(CACHE._tripsLoaded&&!force)return; try{ CA
 function pkSwitch(tab,btn){ pkTab=tab; document.querySelectorAll('#page-packing .att-tab').forEach(b=>b.classList.remove('active')); if(btn)btn.classList.add('active'); pkRender(); }
 async function pkRender(){
   await pkLoadTrips();
+  if(!PKM.loaded){ await dbPkmLoad(); }
   document.querySelectorAll('#page-packing .att-tab').forEach(b=>b.classList.toggle('active',b.getAttribute('data-pk')===pkTab));
   if(pkTab==='orders')pkRenderOrders();
   else if(pkTab==='trip')pkRenderTrip();
@@ -2133,7 +2136,7 @@ function pkRenderTripRows(){
   if(!pkTripRoad){ box.innerHTML='<div class="card"><div style="padding:16px;color:var(--muted);">Select a road to start building this trip.</div></div>'; return; }
   const rows=(CACHE.trips||[]).filter(t=>t.kind!=='return'&&t.trip_date===pkTripDate&&(t.road||'')===pkTripRoad).sort((a,b)=>(a.serial||0)-(b.serial||0));
   let tq=0,tc=0;
-  const body=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return `<tr><td style="text-align:center;"><input type="checkbox" ${pkTripSel.has(t.id)?'checked':''} onchange="pkTripTick('${t.id}')"/></td><td>${i+1}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td><button class="btn btn-reject btn-sm" onclick="pkTripDelete('${t.id}')">Remove</button></td></tr>`;}).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:16px;">No orders added yet.</td></tr>`;
+  const body=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return `<tr><td style="text-align:center;"><input type="checkbox" ${pkTripSel.has(t.id)?'checked':''} onchange="pkTripTick('${t.id}')"/></td><td>${i+1}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td>${isPacker()?'':`<button class="btn btn-reject btn-sm" onclick="pkTripDelete('${t.id}')">Remove</button>`}</td></tr>`;}).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:16px;">No orders added yet.</td></tr>`;
   const allOn=rows.length&&rows.every(t=>pkTripSel.has(t.id));
   box.innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Trip — ${fmtDate(pkTripDate)} · ${attEsc(pkTripRoad)}</div><div class="card-sub">Total Qty ${tq} · Cartons ${tc} · tick rows to print only those (renumbered 1,2,3…)</div></div><div class="card-actions"><button class="btn btn-ghost btn-sm" onclick="pkPrintTrip()">🖨 Print Trip</button></div></div>
    <div style="overflow:auto;"><table><thead><tr><th style="width:30px;text-align:center;"><input type="checkbox" ${allOn?'checked':''} onchange="pkTripTickAll(this.checked)" title="Tick all"/></th><th>Serial</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Qty</th><th>Cartons</th><th></th></tr></thead><tbody>${body}</tbody></table></div></div>`;
@@ -2154,7 +2157,7 @@ async function pkTripAdd(){
     document.getElementById('pk-trip-order').value=''; pkRenderTripRows(); showToast('Added to trip.');
   }catch(e){ showToast('Failed: '+e.message,'err'); }
 }
-async function pkTripDelete(id){ if(!confirm('Remove this order from the trip?'))return; try{ await dbDeleteTrip(id); await pkLoadTrips(true); pkRenderTripRows(); }catch(e){ showToast('Failed: '+e.message,'err'); } }
+async function pkTripDelete(id){ if(packerBlocked())return; if(!confirm('Remove this order from the trip?'))return; try{ await dbDeleteTrip(id); await pkLoadTrips(true); pkRenderTripRows(); }catch(e){ showToast('Failed: '+e.message,'err'); } }
 
 // ── Trip List ──
 function pkRenderList(){
@@ -2185,7 +2188,7 @@ function pkListType(t){ return t.kind==='return'?('Return-'+(t.return_no||1)):'T
 function pkRenderListRows(){
   const tb=document.getElementById('pk-list-rows'); if(!tb)return;
   const rows=pkListFiltered();
-  tb.innerHTML=rows.map((t,i)=>{ const isRet=t.kind==='return'; const typeBadge=`<span style="font-size:11px;font-weight:600;color:${isRet?'#e0913a':'#4ecdc4'};">${pkListType(t)}</span>`; return `<tr><td style="text-align:center;"><input type="checkbox" ${pkListSel.has(t.id)?'checked':''} onchange="pkListTick('${t.id}')"/></td><td>${i+1}</td><td>${typeBadge}</td><td style="white-space:nowrap;">${fmtDate(t.trip_date)}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td>${attEsc(t.road)||(isRet?'—':'')}</td><td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="pkListEdit('${t.id}')">Edit</button> <button class="btn btn-reject btn-sm" onclick="pkListDelete('${t.id}')">Delete</button></td></tr>`;}).join('')||`<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:16px;">No entries yet.</td></tr>`;
+  tb.innerHTML=rows.map((t,i)=>{ const isRet=t.kind==='return'; const typeBadge=`<span style="font-size:11px;font-weight:600;color:${isRet?'#e0913a':'#4ecdc4'};">${pkListType(t)}</span>`; return `<tr><td style="text-align:center;"><input type="checkbox" ${pkListSel.has(t.id)?'checked':''} onchange="pkListTick('${t.id}')"/></td><td>${i+1}</td><td>${typeBadge}</td><td style="white-space:nowrap;">${fmtDate(t.trip_date)}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td>${attEsc(t.road)||(isRet?'—':'')}</td><td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="pkListEdit('${t.id}')">Edit</button> ${isPacker()?'':`<button class="btn btn-reject btn-sm" onclick="pkListDelete('${t.id}')">Delete</button>`}</td></tr>`;}).join('')||`<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:16px;">No entries yet.</td></tr>`;
 }
 function pkListTick(id){ if(pkListSel.has(id))pkListSel.delete(id); else pkListSel.add(id); pkRenderListRows(); }
 function pkListTickAll(on){ pkListSel=new Set(on?pkListFiltered().map(t=>t.id):[]); pkRenderListRows(); }
@@ -2205,7 +2208,7 @@ async function pkListEdit(id){
   try{ await dbUpdateTrip(id,{carton_qty:carton,line_nos:ln.trim()}); await pkLoadTrips(true); pkRenderListRows(); showToast('Trip entry updated.'); }
   catch(e){ showToast('Update failed: '+e.message,'err'); }
 }
-async function pkListDelete(id){
+async function pkListDelete(id){ if(packerBlocked())return;
   if(!confirm('Delete this trip entry permanently?'))return;
   try{ await dbDeleteTrip(id); await pkLoadTrips(true); pkRenderListRows(); showToast('Trip entry deleted.'); }
   catch(e){ showToast('Delete failed: '+e.message,'err'); }
@@ -2235,7 +2238,7 @@ function pkRenderReturns(){
   const byCust={}; rets.forEach(r=>{ const c=r.ship_to||'—'; byCust[c]=(byCust[c]||0)+1; });
   const custTop=Object.entries(byCust).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const tblData=rets.slice().sort((a,b)=>(''+b.trip_date).localeCompare(''+a.trip_date));
-  const tableRows=tblData.map(r=>`<tr><td><span style="font-size:11px;font-weight:600;color:#e0913a;">Return-${r.return_no||1}</span></td><td style="white-space:nowrap;">${fmtDate(r.trip_date)}</td><td>${attEsc(r.ship_to)}</td><td>${attEsc(r.order_no)}</td><td style="font-size:12px;">${attEsc(r.line_nos)}</td><td>${attEsc(r.road)||'—'}</td><td>${attEsc(r.total_qty)}</td><td><button class="btn btn-reject btn-sm" onclick="pkListDelete('${r.id}')">Delete</button></td></tr>`).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px;">No returns recorded yet. Open an order and click “Add to Return”.</td></tr>`;
+  const tableRows=tblData.map(r=>`<tr><td><span style="font-size:11px;font-weight:600;color:#e0913a;">Return-${r.return_no||1}</span></td><td style="white-space:nowrap;">${fmtDate(r.trip_date)}</td><td>${attEsc(r.ship_to)}</td><td>${attEsc(r.order_no)}</td><td style="font-size:12px;">${attEsc(r.line_nos)}</td><td>${attEsc(r.road)||'—'}</td><td>${attEsc(r.total_qty)}</td><td>${isPacker()?'':`<button class="btn btn-reject btn-sm" onclick="pkListDelete('${r.id}')">Delete</button>`}</td></tr>`).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px;">No returns recorded yet. Open an order and click “Add to Return”.</td></tr>`;
   document.getElementById('pk-body').innerHTML=`
    <div class="att-stat-row" style="margin-bottom:14px;">
      <div class="att-stat"><div class="v">${total}</div><div class="l">Total return days</div></div>
@@ -2269,6 +2272,14 @@ function pkRenderImport(){
      <input type="file" id="pk-file" accept=".xlsx,.xlsm,.csv" class="form-input" style="max-width:360px;display:inline-block;"/>
      <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="pkDoImport()">Import</button>
      <div id="pk-import-status" style="margin-top:12px;font-size:13px;color:var(--muted);"></div>
+     <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
+       <div class="form-label">Master data for enrichment (Tex &amp; CS mobile)</div>
+       <div style="font-size:12px;color:var(--muted);margin:4px 0 10px;line-height:1.6;">Upload once; changes only 2–3×/year, shared to all PCs. <b>Tex</b> is taken from the ART/TKT list (by article); the <b>CS name</b> is read from the email before <span class="mono">@coats.com</span> and the <b>CS mobile</b> from the Customer Mapping.</div>
+       <div style="display:flex;gap:22px;flex-wrap:wrap;">
+         <div><div style="font-size:12px;margin-bottom:4px;">ART/TKT list — <b style="color:var(--accent2);">${PKM.texCount?PKM.texCount.toLocaleString()+' articles':'not loaded'}</b></div><label class="btn btn-ghost btn-sm" style="cursor:pointer;">Upload ART/TKT<input type="file" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="pkmUpload('tex',this)"/></label></div>
+         <div><div style="font-size:12px;margin-bottom:4px;">Customer Mapping — <b style="color:var(--accent2);">${PKM.csCount?PKM.csCount.toLocaleString()+' CS contacts':'not loaded'}</b></div><label class="btn btn-ghost btn-sm" style="cursor:pointer;">Upload Customer Mapping<input type="file" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="pkmUpload('cs',this)"/></label></div>
+       </div>
+     </div>
      <div style="margin-top:14px;font-size:12px;color:var(--muted);line-height:1.6;">Matches your <b>DN RAW Sheet</b> columns (any order): Ship to Party Name · Ship to Party Address · Requester · Requester Mobile · Business Principal Name · Customer Order Ref. No · Customer Reference Line No. · Coats Material No. · Brand · Size/Tkt · Shade Code · Ordered Qty · Creation Date · Customer Service Executive · StyleNo/ProductionNo · Comments/Remarks · COATS BRAND/ Tex · PRODUCT CODE · Customer Service Name.<br>A first full import of many rows can take a minute — keep the tab open. Duplicate rows are merged automatically.</div>
 
      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
@@ -2311,7 +2322,7 @@ function pkRenderImport(){
 
      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
        <div class="form-label" style="color:var(--red);">Danger zone</div>
-       <button class="btn btn-reject btn-sm" onclick="pkClearImport()">Clear ALL imported data</button>
+       ${isPacker()?'':`<button class="btn btn-reject btn-sm" onclick="pkClearImport()">Clear ALL imported data</button>`}
        <span style="font-size:12px;color:var(--muted);margin-left:8px;">Use this to wipe the old data, then import a fresh full file so only the latest shows.</span>
      </div>
    </div></div>`;
@@ -2326,7 +2337,7 @@ function pkSaveLogo(){
 function pkClearLogo(){ localStorage.removeItem('sc_print_logo'); const s=document.getElementById('pk-logo-state'); if(s)s.textContent='No logo set — prints show a text header.'; pkLogoPreview(); showToast('Logo removed.'); }
 function pkSetLogoCrop(pos){ lsSet('sc_print_logo_crop',pos); pkLogoPreview(); showToast('Logo crop updated — re-print to see it.'); }
 function pkLogoPreview(){ const sel=document.getElementById('pk-logo-crop'); if(sel)sel.value=lsGet('sc_print_logo_crop','left'); const box=document.getElementById('pk-logo-preview'); if(!box)return; const l=lsGet('sc_print_logo',''); box.innerHTML = l ? '<img src="'+l+'" style="'+pkLogoCropStyle('64px')+'"/>' : '<span style="font-size:10px;color:var(--muted);">no logo</span>'; }
-async function pkClearImport(){
+async function pkClearImport(){ if(packerBlocked())return;
   if(!isAdmin()){ showToast('Only the Super Admin can clear data.','err'); return; }
   if(!confirm('Delete ALL imported sample-order data? This cannot be undone — you will import a fresh file afterwards.'))return;
   const st=document.getElementById('pk-import-status'); if(st)st.textContent='Clearing…';
@@ -2355,6 +2366,61 @@ const PK_HMAP=[
  [['product code'],'product_code'],[['customer service name'],'cs_name'],
 ];
 function pkNorm(s){ return (''+(s==null?'':s)).trim().toLowerCase().replace(/\s+/g,' '); }
+// ── Master data for enrichment (Tex from ART/TKT, CS mobile from Customer Mapping) ──
+const PKM={ tex:new Map(), brand:new Map(), csMob:new Map(), texCount:0, csCount:0, texUpd:'', csUpd:'', loaded:false };
+function pkmKey(s){ return (''+(s==null?'':s)).toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function pkmArticle(material){ return (''+(material==null?'':material)).split('-')[0].toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function pkmEmailName(email){ const e=(''+(email==null?'':email)).trim(); if(!e||e.indexOf('@')<0)return e.replace(/[._]+/g,' ').trim(); return e.split('@')[0].replace(/[._]+/g,' ').trim(); }
+function pkmBuild(at,cm){
+  PKM.tex=new Map(); PKM.brand=new Map();
+  (at||[]).forEach(r=>{ const k=pkmKey(r[0]); if(k&&!PKM.tex.has(k)){ PKM.tex.set(k,(r[1]==null?'':(''+r[1]).trim())); PKM.brand.set(k,r[2]||''); } });
+  PKM.csMob=new Map();
+  (cm||[]).forEach(r=>{ const e=(''+(r[0]||'')).trim().toLowerCase(); if(e&&!PKM.csMob.has(e))PKM.csMob.set(e,(r[1]==null?'':(''+r[1]).trim())); });
+  PKM.texCount=PKM.tex.size; PKM.csCount=PKM.csMob.size;
+}
+async function dbPkmLoad(){
+  try{ const {data,error}=await sb.from('oor_master').select('*').eq('id',1).maybeSingle(); if(error)throw error;
+    pkmBuild((data&&data.art_tkt)||[],(data&&data.customer_map)||[]); PKM.texUpd=(data&&data.art_updated)||''; PKM.csUpd=(data&&data.cust_updated)||'';
+    try{ lsSet('pkm_cache',{at:(data&&data.art_tkt)||[],cm:(data&&data.customer_map)||[],au:PKM.texUpd,cu:PKM.csUpd}); }catch(e){}
+  }catch(e){ const c=lsGet('pkm_cache',null); if(c){ pkmBuild(c.at||[],c.cm||[]); PKM.texUpd=c.au||''; PKM.csUpd=c.cu||''; } else { pkmBuild([],[]); } }
+  PKM.loaded=true;
+}
+async function dbPkmSaveTex(arr){ const {error}=await sb.from('oor_master').upsert({id:1,art_tkt:arr,art_updated:new Date().toISOString()}); if(error)throw error; }
+async function dbPkmSaveCs(arr){ const {error}=await sb.from('oor_master').upsert({id:1,customer_map:arr,cust_updated:new Date().toISOString()}); if(error)throw error; }
+async function pkmUpload(kind,input){
+  const f=input.files&&input.files[0]; if(!f)return;
+  if(!isAdmin()){ showToast('Only Super Admin can update master data.','err'); input.value=''; return; }
+  try{
+    await pkLoadSheetJS(); const buf=await f.arrayBuffer(); const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:null});
+    const norm=h=>(''+h).toLowerCase().replace(/[^a-z0-9]/g,''); const H={}; (rows[0]||[]).forEach((h,i)=>{ if(h!=null&&H[norm(h)]===undefined)H[norm(h)]=i; });
+    const col=(...n)=>{ for(const x of n){ const k=norm(x); if(H[k]!==undefined)return H[k]; } return -1; };
+    const c=lsGet('pkm_cache',{})||{};
+    if(kind==='tex'){
+      const a=col('ART TKT','Article'),t=col('Tex'),b=col('Brand Name','Brand'); if(a<0||t<0){ showToast('Could not find ART TKT / Tex columns.','err'); return; }
+      const arr=[]; for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r||r[a]==null)continue; arr.push([(''+r[a]).trim(),(r[t]==null?'':(''+r[t]).trim()),(b>=0&&r[b]!=null?(''+r[b]).trim():'')]); }
+      showToast('Saving '+arr.length.toLocaleString()+' articles…'); await dbPkmSaveTex(arr);
+      pkmBuild(arr,c.cm||[]); PKM.texUpd=new Date().toISOString(); lsSet('pkm_cache',{at:arr,cm:(c.cm||[]),au:PKM.texUpd,cu:PKM.csUpd}); showToast('Tex master updated · shared to all PCs.');
+    } else {
+      const e=col('CS Mail ID','CS Mail','CS Email','Mail ID'),m=col('CS Mobile No.','CS Mobile','Mobile'); if(e<0||m<0){ showToast('Could not find CS Mail ID / CS Mobile columns.','err'); return; }
+      const seen={}, arr=[]; for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r||r[e]==null)continue; const em=(''+r[e]).trim().toLowerCase(); if(!em||seen[em])continue; seen[em]=1; arr.push([em,(r[m]==null?'':(''+r[m]).trim())]); }
+      showToast('Saving '+arr.length.toLocaleString()+' CS contacts…'); await dbPkmSaveCs(arr);
+      pkmBuild(c.at||[],arr); PKM.csUpd=new Date().toISOString(); lsSet('pkm_cache',{at:(c.at||[]),cm:arr,au:PKM.texUpd,cu:PKM.csUpd}); showToast('Customer mapping (CS mobile) updated · shared to all PCs.');
+    }
+    input.value=''; pkRenderImport();
+  }catch(err){ showToast('Could not read '+f.name+': '+err.message,'err'); }
+}
+function pkmEnrich(o){
+  // Tex (validated against ART/TKT master) → "Brand / Tex-XX"
+  const artK=pkmArticle(o.material_no); const tex=PKM.tex.get(artK);
+  if(tex!=null&&tex!==''){ const br=(o.brand!=null&&(''+o.brand).trim())?(''+o.brand).trim():(PKM.brand.get(artK)||''); o.coats_brand_tex=(br?br+' ':'')+'/ Tex-'+tex; }
+  // CS name from email (before @coats.com) + mobile from Customer Mapping
+  const email=(''+(o.cs_exec||'')).trim();
+  if(email){ const nm=pkmEmailName(email); const mob=PKM.csMob.get(email.toLowerCase())||''; if(nm)o.cs_name=nm+(mob?(' , Mob- '+mob):''); }
+  delete o.cs_exec; // not a DB column
+  o.imported_at=new Date().toISOString();
+}
+async function dbPkPurgeOld(){ const cutoff=new Date(Date.now()-90*86400000).toISOString(); try{ const {error}=await sb.from('sample_lines').delete().lt('imported_at',cutoff); if(error)throw error; }catch(e){} }
 function pkFieldFor(header){ const h=pkNorm(header); const h2=h.replace(/[.\s]+$/,'').replace(/\.$/,''); for(const [keys,field] of PK_HMAP){ if(keys.includes(h)||keys.includes(h2)||keys.some(k=>k.replace(/[.\s]+$/,'')===h2))return field; } return null; }
 async function pkDoImport(){
   const fi=document.getElementById('pk-file'); const f=fi&&fi.files[0];
@@ -2389,14 +2455,16 @@ async function pkDoImport(){
       if(o.creation_date instanceof Date)o.creation_date=o.creation_date.toISOString();
       else if(o.creation_date!=null)o.creation_date=(''+o.creation_date).trim();
       o.id=[o.order_no,o.line_no,(o.shade||''),(o.material_no||'')].join('|');
+      pkmEnrich(o); // Tex + CS name/mobile from master; sets imported_at; drops cs_exec
       byId[o.id]=o; // de-duplicate: identical keys collapse to one row
     }
     const recs=Object.values(byId);
     if(!recs.length){ st.innerHTML='<span style="color:var(--red);">No data rows found in the file.</span>'; return; }
     let done=0; const batch=400;
     for(let i=0;i<recs.length;i+=batch){ await dbPkUpsert(recs.slice(i,i+batch)); done+=Math.min(batch,recs.length-i); st.textContent=`Imported ${done} / ${recs.length}…`; }
-    st.innerHTML=`<span style="color:var(--green);font-weight:600;">Done — ${recs.length} order lines imported / updated.</span>`;
-    showToast('Import complete: '+recs.length+' lines.');
+    await dbPkPurgeOld();
+    st.innerHTML=`<span style="color:var(--green);font-weight:600;">Done — ${recs.length} order lines added / updated.</span> <span style="color:var(--muted);">Data is kept cumulatively; lines older than 3 months are removed automatically.</span>`;
+    showToast('Import complete: '+recs.length+' lines (added to the cumulative 3-month dataset).');
   }catch(e){ st.innerHTML='<span style="color:var(--red);">Import failed: '+attEsc(e.message)+'</span>'; }
 }
 
