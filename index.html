@@ -2017,6 +2017,7 @@ async function pkRender(){
 
 // ── order helpers ──
 function pkHeader(lines){
+  lines=lines.slice().sort((a,b)=>(''+(a.line_no==null?'':a.line_no)).localeCompare(''+(b.line_no==null?'':b.line_no),undefined,{numeric:true}));
   const f=lines[0];
   const lineNos=[...new Set(lines.map(l=>l.line_no).filter(x=>x!=null&&x!==''))].sort((a,b)=>(''+a).localeCompare(''+b,undefined,{numeric:true})).join(',');
   const totalQty=lines.reduce((s,l)=>s+(parseFloat(l.qty)||0),0);
@@ -2371,12 +2372,17 @@ function pkNorm(s){ return (''+(s==null?'':s)).trim().toLowerCase().replace(/\s+
 const PKM={ tex:new Map(), brand:new Map(), csMob:new Map(), texCount:0, csCount:0, texUpd:'', csUpd:'', loaded:false };
 function pkmKey(s){ return (''+(s==null?'':s)).toUpperCase().replace(/[^A-Z0-9]/g,''); }
 function pkmArticle(material){ return (''+(material==null?'':material)).split('-')[0].toUpperCase().replace(/[^A-Z0-9]/g,''); }
-function pkmEmailName(email){ const e=(''+(email==null?'':email)).trim(); if(!e||e.indexOf('@')<0)return e.replace(/[._]+/g,' ').trim(); return e.split('@')[0].replace(/[._]+/g,' ').trim(); }
+function pkmEmailName(email){ const e=(''+(email==null?'':email)).trim(); const raw=(!e||e.indexOf('@')<0)?e:e.split('@')[0]; return raw.replace(/[._]+/g,' ').trim().replace(/\b\w/g,c=>c.toUpperCase()); }
 function pkmBuild(at,cm){
   PKM.tex=new Map(); PKM.brand=new Map();
-  (at||[]).forEach(r=>{ const k=pkmKey(r[0]); if(k&&!PKM.tex.has(k)){ PKM.tex.set(k,(r[1]==null?'':(''+r[1]).trim())); PKM.brand.set(k,r[2]||''); } });
+  (at||[]).forEach(r=>{ if(!Array.isArray(r))return; const k=pkmKey(r[0]); if(!k||PKM.tex.has(k))return;
+    // packing format [article,tex,brand]; legacy OOR format [article,GT,tex,tkt,brand]
+    let tex,brand; if(r.length>=5){ tex=r[2]; brand=r[4]; } else { tex=r[1]; brand=r[2]; }
+    PKM.tex.set(k,(tex==null?'':(''+tex).trim())); PKM.brand.set(k,brand||''); });
   PKM.csMob=new Map();
-  (cm||[]).forEach(r=>{ const e=(''+(r[0]||'')).trim().toLowerCase(); if(e&&!PKM.csMob.has(e))PKM.csMob.set(e,(r[1]==null?'':(''+r[1]).trim())); });
+  (cm||[]).forEach(r=>{ if(!Array.isArray(r))return; const e=(''+(r[0]||'')).trim().toLowerCase();
+    if(e.indexOf('@')<0)return; // only [email,mobile] rows; ignore legacy customer rows
+    if(!PKM.csMob.has(e))PKM.csMob.set(e,(r[1]==null?'':(''+r[1]).trim())); });
   PKM.texCount=PKM.tex.size; PKM.csCount=PKM.csMob.size;
 }
 async function dbPkmLoad(){
@@ -2418,6 +2424,8 @@ function pkmEnrich(o){
   // CS name from email (before @coats.com) + mobile from Customer Mapping
   const email=(''+(o.cs_exec||'')).trim();
   if(email){ const nm=pkmEmailName(email); const mob=PKM.csMob.get(email.toLowerCase())||''; if(nm)o.cs_name=nm+(mob?(' , Mob- '+mob):''); }
+  // Product Code = article (Coats Material No before the shade) when the file has none
+  if(o.product_code==null||(''+o.product_code).trim()===''){ const a=(''+(o.material_no||'')).split('-')[0].trim(); if(a)o.product_code=a; }
   delete o.cs_exec; // not a DB column
   o.imported_at=new Date().toISOString();
 }
