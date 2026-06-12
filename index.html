@@ -261,7 +261,7 @@ select.form-input option{background:var(--surface2);}
 <!-- LOGIN -->
 <div class="login-screen" id="login-screen">
   <div class="login-card">
-    <div class="login-logo"><div class="sc-badge">SC</div><div class="lt">Coats BD Ltd.</div><div class="ln">SC Digital Team</div><div class="ls">Sign in to continue</div></div>
+    <div class="login-logo"><div class="sc-badge">SC</div><div class="lt">Coats BD</div><div class="ln">SC Digital Team</div><div class="ls">Sign in to continue</div></div>
     <div class="conn-banner hidden" id="conn-banner"></div>
     <div class="login-field"><label>User ID</label><input type="text" id="login-id" placeholder="Your user ID" autocomplete="off"/></div>
     <div class="login-field"><label>Password</label><input type="password" id="login-pw" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
@@ -276,7 +276,7 @@ select.form-input option{background:var(--surface2);}
 
 <div class="app hidden" id="app">
 <aside class="sidebar">
-  <div class="logo"><div class="logo-row"><div class="sc-badge-sm">SC</div><div><div class="logo-tag">Coats BD Ltd.</div><div class="logo-title">SC Digital Team</div><div class="logo-sub" id="app-subtitle" style="color:var(--accent2);font-weight:500;margin-top:3px;">Management.</div><div class="logo-sub" id="sidebar-date-label" style="margin-top:1px;"></div></div></div></div>
+  <div class="logo"><div class="logo-row"><div class="sc-badge-sm">SC</div><div><div class="logo-tag">Coats BD Ltd.</div><div class="logo-title">SC Digital Team</div><div class="logo-sub" id="app-subtitle" style="color:var(--accent2);font-weight:500;margin-top:3px;">FCE TA Tracker</div><div class="logo-sub" id="sidebar-date-label" style="margin-top:1px;"></div></div></div></div>
   <nav class="nav" id="nav-menu"></nav>
   <div class="sidebar-footer">
     <div class="role-pill"><div class="rl">Signed in</div><div class="rv" id="current-user-label">—</div><div class="rr" id="current-role-label">—</div></div>
@@ -504,26 +504,58 @@ select.form-input option{background:var(--surface2);}
 
 <div class="modal-overlay" id="order-modal"><div class="modal">
   <div class="modal-header"><h3 id="order-modal-title">New Order</h3><button class="btn-icon" onclick="closeModal('order-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-  <div class="modal-body"><div class="form-grid">
-    <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="o-date"/></div>
-    <div class="form-group"><label class="form-label">Order No</label><input class="form-input" type="text" id="o-orderno" placeholder="e.g. PS40294323"/></div>
-    <div class="form-group"><label class="form-label">Task Type *</label><select class="form-input" id="o-task" onchange="onTaskChange()"><option value="">Select…</option><option>Swatch Collection</option><option>Sample Delivery</option></select></div>
-    <div class="form-group"><label class="form-label">Service By *</label><select class="form-input" id="o-service"><option value="">Select task first…</option></select></div>
-    <div class="form-group"><label class="form-label">Customer Name <span style="text-transform:none;color:var(--dim);">(type to search)</span></label><div class="combo"><input class="form-input" type="text" id="o-customer" placeholder="Type customer…" autocomplete="off" oninput="oComboFilter('customer',this.value)" onfocus="oComboFilter('customer',this.value)"/><div class="combo-list" id="o-customer-list"></div></div></div>
-    <div class="form-group"><label class="form-label">Buyer Name <span style="text-transform:none;color:var(--dim);">(type to search)</span></label><div class="combo"><input class="form-input" type="text" id="o-buyer" placeholder="Type buyer…" autocomplete="off" oninput="oComboFilter('buyer',this.value)" onfocus="oComboFilter('buyer',this.value)"/><div class="combo-list" id="o-buyer-list"></div></div></div>
-    <!-- Swatch-only fields -->
-    <div class="form-group o-swatch"><label class="form-label">Responsibility To</label><select class="form-input" id="o-fce"></select></div>
-    <div class="form-group o-swatch"><label class="form-label">Requested Time</label><input class="form-input" type="text" id="o-reqtime" placeholder="e.g. 10:30 AM"/></div>
-    <!-- Delivery-only fields -->
-    <div class="form-group o-delivery"><label class="form-label">Delivery Date</label><input class="form-input" type="date" id="o-delivered"/></div>
-    <div class="form-group full o-delivery"><label class="form-label">Delivery note (PDF / image)</label><input class="form-input" type="file" id="o-file" accept=".pdf,.jpg,.jpeg,.png" style="padding:7px;"/><div id="o-file-current" style="font-size:11px;color:var(--muted);margin-top:4px;"></div></div>
-    <!-- Delivery zone (road) -->
-    <div class="form-group"><label class="form-label">Delivery Zone <span style="text-transform:none;color:var(--dim);">(road)</span></label><select class="form-input" id="o-zone" onchange="onZoneSelect(this)"></select></div>
-    <!-- Status (both) -->
-    <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="o-status" onchange="onOrderStatusChange()"><option>Requested</option><option>Collected</option><option>In Development</option><option>Delivered</option></select></div>
-    <div class="form-group full"><label class="form-label">Remarks</label><textarea class="form-input" id="o-remarks" style="min-height:48px;"></textarea></div>
-  </div></div>
-  <div class="modal-footer"><button class="btn btn-reject" style="margin-right:auto;display:none;" id="o-delete-btn" onclick="deleteOrder()">Delete</button><button class="btn btn-ghost" onclick="closeModal('order-modal')">Cancel</button><button class="btn btn-primary" id="o-save-btn" onclick="saveOrder()">Save Order</button></div>
+  <div class="modal-body">
+   <!-- STEP 1 -->
+   <div id="o-step1">
+     <div class="form-grid">
+       <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="o-date"/></div>
+       <div class="form-group"><label class="form-label">Task Type *</label><select class="form-input" id="o-task" onchange="onTaskChange()"><option value="">Select…</option><option>Swatch Collection</option><option>Sample Delivery</option></select></div>
+     </div>
+     <div style="margin-top:14px;color:var(--muted);font-size:12.5px;">Pick the <b>date</b> and <b>task type</b>, then continue — you can add many orders at once by uploading a file.</div>
+   </div>
+   <!-- STEP 2 -->
+   <div id="o-step2" style="display:none;">
+     <div id="o-step2-summary" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--card2,#171726);border:1px solid var(--border);border-radius:10px;padding:9px 13px;margin-bottom:14px;font-size:12.5px;"></div>
+     <!-- FILE MODE -->
+     <div id="o-filemode">
+       <div class="oor-up req" style="display:flex;flex-direction:column;gap:10px;">
+         <div style="font-size:13px;"><b>Upload an Excel / CSV</b> with one row per order. Columns: <span class="mono" style="font-size:11px;">Order No · Customer · Buyer · Service By · Delivery Zone · Status · Req Time/Delivered · Remarks</span></div>
+         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+           <label class="btn btn-primary btn-sm" style="cursor:pointer;">Choose file<input type="file" id="o-upfile" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="oFileParse(this)"/></label>
+           <button class="btn btn-ghost btn-sm" type="button" onclick="oDownloadTemplate()">⬇ Download template</button>
+           <span class="oor-mini" id="o-upname"></span>
+         </div>
+       </div>
+       <div id="o-preview" style="margin-top:12px;"></div>
+       <div style="margin-top:12px;font-size:12px;color:var(--muted);">Need just one order? <a href="javascript:void(0)" onclick="oToggleManual(true)" style="color:var(--accent2,#52c87a);">Enter it manually</a></div>
+     </div>
+     <!-- MANUAL MODE -->
+     <div id="o-manualmode" style="display:none;">
+       <div class="form-grid">
+         <div class="form-group"><label class="form-label">Order No</label><input class="form-input" type="text" id="o-orderno" placeholder="e.g. RS40294323"/></div>
+         <div class="form-group"><label class="form-label">Service By *</label><select class="form-input" id="o-service"><option value="">Select task first…</option></select></div>
+         <div class="form-group"><label class="form-label">Customer Name <span style="text-transform:none;color:var(--dim);">(type to search)</span></label><div class="combo"><input class="form-input" type="text" id="o-customer" placeholder="Type customer…" autocomplete="off" oninput="oComboFilter('customer',this.value)" onfocus="oComboFilter('customer',this.value)"/><div class="combo-list" id="o-customer-list"></div></div></div>
+         <div class="form-group"><label class="form-label">Buyer Name <span style="text-transform:none;color:var(--dim);">(type to search)</span></label><div class="combo"><input class="form-input" type="text" id="o-buyer" placeholder="Type buyer…" autocomplete="off" oninput="oComboFilter('buyer',this.value)" onfocus="oComboFilter('buyer',this.value)"/><div class="combo-list" id="o-buyer-list"></div></div></div>
+         <div class="form-group o-swatch"><label class="form-label">Responsibility To</label><select class="form-input" id="o-fce"></select></div>
+         <div class="form-group o-swatch"><label class="form-label">Requested Time</label><input class="form-input" type="text" id="o-reqtime" placeholder="e.g. 10:30 AM"/></div>
+         <div class="form-group o-delivery"><label class="form-label">Delivery Date</label><input class="form-input" type="date" id="o-delivered"/></div>
+         <div class="form-group full o-delivery"><label class="form-label">Delivery note (PDF / image)</label><input class="form-input" type="file" id="o-file" accept=".pdf,.jpg,.jpeg,.png" style="padding:7px;"/><div id="o-file-current" style="font-size:11px;color:var(--muted);margin-top:4px;"></div></div>
+         <div class="form-group"><label class="form-label">Delivery Zone <span style="text-transform:none;color:var(--dim);">(road)</span></label><select class="form-input" id="o-zone" onchange="onZoneSelect(this)"></select></div>
+         <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="o-status" onchange="onOrderStatusChange()"><option>Requested</option><option>Collected</option><option>In Development</option><option>Delivered</option></select></div>
+         <div class="form-group full"><label class="form-label">Remarks</label><textarea class="form-input" id="o-remarks" style="min-height:48px;"></textarea></div>
+       </div>
+       <div id="o-manual-back" style="margin-top:10px;font-size:12px;color:var(--muted);">Adding many? <a href="javascript:void(0)" onclick="oToggleManual(false)" style="color:var(--accent2,#52c87a);">Upload a file instead</a></div>
+     </div>
+   </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-reject" style="margin-right:auto;display:none;" id="o-delete-btn" onclick="deleteOrder()">Delete</button>
+    <button class="btn btn-ghost" id="o-back-btn" style="display:none;" onclick="oStep(1)">← Back</button>
+    <button class="btn btn-ghost" onclick="closeModal('order-modal')">Cancel</button>
+    <button class="btn btn-primary" id="o-continue-btn" onclick="oContinue()">Continue →</button>
+    <button class="btn btn-primary" id="o-savebulk-btn" style="display:none;" disabled onclick="saveOrderBulk()">Save orders</button>
+    <button class="btn btn-primary" id="o-save-btn" style="display:none;" onclick="saveOrder()">Save Order</button>
+  </div>
 </div></div>
 
 <div class="modal-overlay" id="announce-modal"><div class="modal">
@@ -1304,6 +1336,93 @@ function oComboFilter(field,q){
   list.classList.add('open');
 }
 function oComboPick(field,i){ const v=oCombo.matches[i]; if(v==null)return; document.getElementById('o-'+field).value=v; document.getElementById('o-'+field+'-list').classList.remove('open'); }
+let oBulkRows=[];
+function oStep(n){
+  document.getElementById('o-step1').style.display=n===1?'block':'none';
+  document.getElementById('o-step2').style.display=n===2?'block':'none';
+  document.getElementById('o-continue-btn').style.display=n===1?'inline-flex':'none';
+  document.getElementById('o-back-btn').style.display=(n===2&&!editingOrderId)?'inline-flex':'none';
+  if(n===1){ document.getElementById('o-save-btn').style.display='none'; document.getElementById('o-savebulk-btn').style.display='none'; }
+}
+function oResetMode(mode){
+  document.getElementById('o-filemode').style.display=mode==='file'?'block':'none';
+  document.getElementById('o-manualmode').style.display=mode==='manual'?'block':'none';
+  document.getElementById('o-savebulk-btn').style.display=mode==='file'?'inline-flex':'none';
+  document.getElementById('o-save-btn').style.display=mode==='manual'?'inline-flex':'none';
+}
+function oToggleManual(on){ oResetMode(on?'manual':'file'); if(on)onTaskChange(); }
+function oStep2Summary(){
+  const date=document.getElementById('o-date').value, task=document.getElementById('o-task').value;
+  document.getElementById('o-step2-summary').innerHTML=`<span><b>Date:</b> ${fmtDate(date)}</span><span><b>Task:</b> ${attEsc(task)}</span><a href="javascript:void(0)" onclick="oStep(1)" style="color:var(--accent2,#52c87a);margin-left:auto;">change</a>`;
+}
+function oContinue(){
+  const date=document.getElementById('o-date').value, task=document.getElementById('o-task').value;
+  if(!date||!task){ showToast('Please choose date and task type.','err'); return; }
+  oStep(2); oStep2Summary(); oResetMode('file');
+  oBulkRows=[]; document.getElementById('o-preview').innerHTML=''; document.getElementById('o-upname').textContent='';
+  const uf=document.getElementById('o-upfile'); if(uf)uf.value=''; document.getElementById('o-savebulk-btn').disabled=true; document.getElementById('o-savebulk-btn').textContent='Save orders';
+}
+function oToISO(v){ if(v instanceof Date && !isNaN(v))return v.toISOString().slice(0,10); const s=(''+(v||'')).trim(); let m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/); if(m)return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`; m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m)return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`; return ''; }
+async function oFileParse(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  document.getElementById('o-upname').textContent=file.name;
+  try{
+    await pkLoadSheetJS();
+    const buf=await file.arrayBuffer(); const wb=XLSX.read(new Uint8Array(buf),{type:'array',cellDates:true});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:null});
+    if(rows.length<2){ showToast('No data rows found in the file.','err'); return; }
+    const norm=h=>(''+h).toLowerCase().replace(/[^a-z0-9]/g,''); const H={};
+    rows[0].forEach((h,i)=>{ if(h!=null&&H[norm(h)]===undefined)H[norm(h)]=i; });
+    const col=(...names)=>{ for(const n of names){ const k=norm(n); if(H[k]!==undefined)return H[k]; } return -1; };
+    const ci={ order:col('Order No','OrderNo','Order'), cust:col('Customer','Customer Name'), buyer:col('Buyer','Buyer Name'),
+      svc:col('Service By','Service','Service By Name'), zone:col('Delivery Zone','Zone','Road'), status:col('Status'),
+      req:col('Req Time/Delivered','Req Time','Requested Time','Delivered','Delivery Date'), rem:col('Remarks','Remark','Note') };
+    const ALLOWED=['Requested','Collected','In Development','Delivered']; const val=v=>v==null?'':(''+v).trim();
+    oBulkRows=[];
+    for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r)continue;
+      const order=val(r[ci.order]), cust=val(r[ci.cust]); if(!order&&!cust)continue;
+      let st=val(r[ci.status]); st=ALLOWED.find(a=>a.toLowerCase()===st.toLowerCase())||'Requested';
+      let reqv=r[ci.req]; reqv=(reqv instanceof Date)?reqv.toISOString().slice(0,10):val(reqv);
+      oBulkRows.push({ orderNo:order, customer:cust, buyer:val(r[ci.buyer]), service:val(r[ci.svc]), zone:val(r[ci.zone]), status:st, req:reqv, remarks:val(r[ci.rem]) });
+    }
+    oRenderPreview();
+  }catch(e){ showToast('Could not read file: '+e.message,'err'); }
+}
+function oRenderPreview(){
+  const box=document.getElementById('o-preview'); const n=oBulkRows.length; const btn=document.getElementById('o-savebulk-btn');
+  btn.disabled=n===0; btn.textContent=n?('Save '+n+' order'+(n>1?'s':'')):'Save orders';
+  if(!n){ box.innerHTML='<div style="font-size:11.5px;color:var(--muted);">No valid rows found — check the column names match the template.</div>'; return; }
+  const head='<thead><tr><th>Order No</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Zone</th><th>Status</th><th>Req/Delivered</th></tr></thead>';
+  const body='<tbody>'+oBulkRows.slice(0,30).map(r=>`<tr><td>${attEsc(r.orderNo)||'—'}</td><td>${attEsc(r.customer)||'—'}</td><td>${attEsc(r.buyer)||'—'}</td><td>${attEsc(r.service)||'—'}</td><td>${attEsc(r.zone)||'—'}</td><td>${attEsc(r.status)}</td><td>${attEsc(r.req)||'—'}</td></tr>`).join('')+'</tbody>';
+  box.innerHTML=`<div style="font-size:11.5px;color:var(--muted);margin-bottom:6px;">${n} order${n>1?'s':''} ready${n>30?' · showing first 30':''} — all tagged <b>${attEsc(document.getElementById('o-date').value?fmtDate(document.getElementById('o-date').value):'')}</b> · <b>${attEsc(document.getElementById('o-task').value)}</b>:</div><div class="card" style="overflow:auto;max-height:280px;"><table style="min-width:680px;">${head}${body}</table></div>`;
+}
+function oDownloadTemplate(){
+  const headers=['Order No','Customer','Buyer','Service By','Delivery Zone','Status','Req Time/Delivered','Remarks'];
+  const sample=['RS40294323','Example Customer Ltd','NEXT','Excelsior Courier','Konabari','Requested','10:30 AM',''];
+  const esc=v=>{ const s=(''+v).replace(/"/g,'""'); return /[",\n]/.test(s)?'"'+s+'"':s; };
+  const csv=[headers.join(','),sample.map(esc).join(',')].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Order_Tracker_template.csv'; a.click();
+}
+async function saveOrderBulk(){
+  if(!canSee('orders')){ showToast('No access to Order Tracker.','err'); return; }
+  const date=document.getElementById('o-date').value, task=document.getElementById('o-task').value;
+  if(!date||!task){ showToast('Date and task type are required.','err'); oStep(1); return; }
+  if(!oBulkRows.length){ showToast('Nothing to save — upload a file first.','err'); return; }
+  const btn=document.getElementById('o-savebulk-btn'); const orig=btn.textContent; btn.disabled=true; btn.innerHTML='<span class="loader"></span> Saving…';
+  try{
+    let ok=0;
+    for(const r of oBulkRows){
+      const o={ id:'o_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), date, task,
+        orderNo:(r.orderNo||'').trim(), service:r.service||'', customer:r.customer||'', buyer:r.buyer||'', fce:'',
+        reqTime:(task==='Swatch Collection'?(r.req||''):''), to:r.zone||null,
+        status:r.status||'Requested', deliveredAt:(task==='Sample Delivery'?(oToISO(r.req)||null):null),
+        remarks:r.remarks||'', createdBy:currentUser.id };
+      await dbUpsertOrder(orderToRow(o)); ok++;
+    }
+    await refreshAll(); closeModal('order-modal'); showPage('orders');
+    showToast(ok+' order'+(ok>1?'s':'')+' added to the tracker.');
+  }catch(e){ showToast('Save failed: '+e.message,'err'); btn.disabled=false; btn.textContent=orig; }
+}
 function openOrderModal(id){
   if(!canSee('orders')){ showToast('You don\'t have access to Order Tracker.','err'); return; }
   editingOrderId=id||null;
@@ -1316,8 +1435,8 @@ function openOrderModal(id){
   if(id){
     const o=getOrders().find(x=>x.id===id); if(!o)return;
     document.getElementById('o-date').value=o.date;
-    document.getElementById('o-orderno').value=o.orderNo||'';
     document.getElementById('o-task').value=o.task||''; onTaskChange();
+    document.getElementById('o-orderno').value=o.orderNo||'';
     document.getElementById('o-service').value=o.service||'';
     document.getElementById('o-customer').value=o.customer||'';
     document.getElementById('o-buyer').value=o.buyer||'';
@@ -1328,13 +1447,16 @@ function openOrderModal(id){
     document.getElementById('o-remarks').value=o.remarks||'';
     { const zs=document.getElementById('o-zone'); if(zs){ if(o.to&&![...zs.options].some(op=>op.value===o.to)){ const op=document.createElement('option'); op.textContent=o.to; zs.insertBefore(op,zs.options[zs.options.length-1]); } zs.value=o.to||''; } }
     if(o.noteFile) document.getElementById('o-file-current').innerHTML=`Current: <a href="${dbNoteUrl(o.noteFile)}" target="_blank" rel="noopener" style="color:var(--accent2);">${o.noteName||'view note'}</a>`;
+    oStep(2); oStep2Summary(); oResetMode('manual'); document.getElementById('o-back-btn').style.display='none';
   } else {
     document.getElementById('o-date').value=new Date().toISOString().split('T')[0];
-    ['o-orderno','o-customer','o-buyer','o-reqtime','o-remarks','o-delivered'].forEach(i=>document.getElementById(i).value='');
+    ['o-orderno','o-customer','o-buyer','o-reqtime','o-remarks','o-delivered'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
     document.getElementById('o-task').value=''; onTaskChange();
     document.getElementById('o-status').value='Requested';
     document.getElementById('o-fce').value='';
     { const zs=document.getElementById('o-zone'); if(zs)zs.value=''; }
+    oBulkRows=[];
+    oStep(1);
   }
   document.getElementById('order-modal').classList.add('open');
 }
