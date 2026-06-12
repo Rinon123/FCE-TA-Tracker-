@@ -818,7 +818,7 @@ async function bootApp(){
   const allowed=allowedPagesFor(currentUser);
   const onlyOrders=allowed.length>0 && allowed.every(p=>p==='orders');
   const titleEl=document.getElementById('app-subtitle');
-  if(titleEl) titleEl.textContent=onlyOrders?'Sample Order Tracker':'FCE TA Tracker';
+  if(titleEl) titleEl.textContent=onlyOrders?'Sample Order Tracker':'Operation Management';
   // Approved-TA pill only for users who can see TA pages; the FCE/month top filters are
   // controlled per-page by showPage() (visible on TA Tracker only).
   const seesTA = allowed.some(p=>['dashboard','visitlog','charts','perfce','addentry','approval'].includes(p));
