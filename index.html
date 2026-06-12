@@ -2021,7 +2021,12 @@ function pkHeader(lines){
   const f=lines[0];
   const lineNos=[...new Set(lines.map(l=>l.line_no).filter(x=>x!=null&&x!==''))].sort((a,b)=>(''+a).localeCompare(''+b,undefined,{numeric:true})).join(',');
   const totalQty=lines.reduce((s,l)=>s+(parseFloat(l.qty)||0),0);
-  return {orderNo:f.order_no,shipTo:f.ship_to,shipAddr:f.ship_addr,requester:f.requester,mobile:f.requester_mobile,buyer:f.buyer,csName:f.cs_name,creationDate:f.creation_date,styleNo:f.style_no,lineNos,totalQty,lines,_sel:new Set(lines.map((_,i)=>i))};
+  let csName=f.cs_name||'';
+  if(PKM.csMobByName&&PKM.csMobByName.size){
+    const baseName=csName.replace(/\s*,?\s*Mob-.*$/i,'').trim();
+    if(baseName){ const mob=PKM.csMobByName.get(baseName.toLowerCase()); if(mob)csName=baseName+' , Mob- '+mob; }
+  }
+  return {orderNo:f.order_no,shipTo:f.ship_to,shipAddr:f.ship_addr,requester:f.requester,mobile:f.requester_mobile,buyer:f.buyer,csName,creationDate:f.creation_date,styleNo:f.style_no,lineNos,totalQty,lines,_sel:new Set(lines.map((_,i)=>i))};
 }
 // dd/mm/yyyy from common formats (dd-mm-yyyy…, yyyy-mm-dd…, or any parseable date)
 function pkFmtDate(v){ if(v==null||v==='')return ''; const s=(''+v).trim(); let m=s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/); if(m)return m[1].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[3]; m=s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if(m)return m[3].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[1]; const d=new Date(s); if(!isNaN(d))return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); return s; }
@@ -2316,9 +2321,8 @@ function pkRenderImport(){
            <input class="form-input" type="number" min="20" value="${pkStickerW()}" style="width:110px;" onchange="pkSetSetting('sc_sticker_w',this.value)"/></div>
          <div><div style="font-size:12px;color:var(--muted);margin-bottom:3px;">Sticker height (mm)</div>
            <input class="form-input" type="number" min="20" value="${pkStickerH()}" style="width:110px;" onchange="pkSetSetting('sc_sticker_h',this.value)"/></div>
-         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" ${pkStickerBarcode()?'checked':''} onchange="pkSetSetting('sc_sticker_barcode',this.checked?'1':'0')"/> Print barcode on sticker</label>
        </div>
-       <div style="font-size:12px;color:var(--muted);margin-top:6px;">Barcode encodes the Order No (and the line no when you print a single line). Set sticker size to your label — e.g. 100 × 150 for portrait, 150 × 100 for landscape.</div>
+       <div style="font-size:12px;color:var(--muted);margin-top:6px;">Set sticker size to your label — e.g. 100 × 150 for portrait, 150 × 100 for landscape.</div>
      </div>
 
      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
@@ -2359,7 +2363,8 @@ const PK_HMAP=[
  [['business principal name','buyer','brand/buyer','buyer name'],'buyer'],
  [['customer order ref. no','customer order ref no','order no'],'order_no'],
  [['sample order no','sample order no.'],'sample_order_no'],
- [['customer reference line','customer reference line no.','customer reference line no','line no','line','lines no'],'line_no'],
+ [['customer reference line','customer reference line no.','customer reference line no'],'line_no'],
+ [['line no','line no.','line','lines no'],'alt_line_no'],
  [['coats material no.','coats material no','material no'],'material_no'],
  [['brand'],'brand'],[['size/tkt','size'],'size_tkt'],[['shade code','shade'],'shade'],
  [['ordered qty','qty','ordered quantity'],'qty'],[['creation date'],'creation_date'],
@@ -2369,7 +2374,7 @@ const PK_HMAP=[
 ];
 function pkNorm(s){ return (''+(s==null?'':s)).trim().toLowerCase().replace(/\s+/g,' '); }
 // ── Master data for enrichment (Tex from ART/TKT, CS mobile from Customer Mapping) ──
-const PKM={ tex:new Map(), brand:new Map(), csMob:new Map(), texCount:0, csCount:0, texUpd:'', csUpd:'', loaded:false };
+const PKM={ tex:new Map(), brand:new Map(), csMob:new Map(), csMobByName:new Map(), texCount:0, csCount:0, texUpd:'', csUpd:'', loaded:false };
 function pkmKey(s){ return (''+(s==null?'':s)).toUpperCase().replace(/[^A-Z0-9]/g,''); }
 function pkmArticle(material){ return (''+(material==null?'':material)).split('-')[0].toUpperCase().replace(/[^A-Z0-9]/g,''); }
 function pkmEmailName(email){ const e=(''+(email==null?'':email)).trim(); const raw=(!e||e.indexOf('@')<0)?e:e.split('@')[0]; return raw.replace(/[._]+/g,' ').trim().replace(/\b\w/g,c=>c.toUpperCase()); }
@@ -2379,10 +2384,12 @@ function pkmBuild(at,cm){
     // packing format [article,tex,brand]; legacy OOR format [article,GT,tex,tkt,brand]
     let tex,brand; if(r.length>=5){ tex=r[2]; brand=r[4]; } else { tex=r[1]; brand=r[2]; }
     PKM.tex.set(k,(tex==null?'':(''+tex).trim())); PKM.brand.set(k,brand||''); });
-  PKM.csMob=new Map();
+  PKM.csMob=new Map(); PKM.csMobByName=new Map();
   (cm||[]).forEach(r=>{ if(!Array.isArray(r))return; const e=(''+(r[0]||'')).trim().toLowerCase();
     if(e.indexOf('@')<0)return; // only [email,mobile] rows; ignore legacy customer rows
-    if(!PKM.csMob.has(e))PKM.csMob.set(e,(r[1]==null?'':(''+r[1]).trim())); });
+    const mob=(r[1]==null?'':(''+r[1]).trim());
+    if(!PKM.csMob.has(e))PKM.csMob.set(e,mob);
+    const nm=pkmEmailName(e).toLowerCase(); if(nm&&!PKM.csMobByName.has(nm))PKM.csMobByName.set(nm,mob); });
   PKM.texCount=PKM.tex.size; PKM.csCount=PKM.csMob.size;
 }
 async function dbPkmLoad(){
@@ -2459,6 +2466,8 @@ async function pkDoImport(){
       headers.forEach((field,c)=>{ if(field)o[field]=row[c]; });
       if((o.order_no==null||(''+o.order_no).trim()==='')&&o.sample_order_no!=null&&(''+o.sample_order_no).trim()!=='')o.order_no=o.sample_order_no;
       delete o.sample_order_no; // helper only, not a DB column
+      if((o.line_no==null||(''+o.line_no).trim()==='')&&o.alt_line_no!=null&&(''+o.alt_line_no).trim()!=='')o.line_no=o.alt_line_no;
+      delete o.alt_line_no; // helper only, not a DB column
       if(o.order_no==null||(''+o.order_no).trim()==='')continue;
       o.order_no=(''+o.order_no).trim();
       o.line_no=o.line_no==null?'':(''+o.line_no).trim();
@@ -2526,11 +2535,6 @@ async function pkPrintSticker(){
   const sel=pkSelectedLines();
   const usedLines=(sel.length?sel:o.lines);
   const lineNos=usedLines.map(l=>l.line_no).filter(x=>x!=null&&x!=='').join(',');
-  // barcode value: order no, plus the line no when exactly one line is selected
-  let barImg='';
-  if(pkStickerBarcode()){
-    try{ await pkLoadBarcode(); const val=o.orderNo+(lineNos?('-'+lineNos):''); const d=pkMakeBarcode(val); if(d)barImg='<div class="bc"><img src="'+d+'"/></div>'; }catch(e){}
-  }
   const row=(l,v,strong)=>'<tr><td class="l">'+l+'</td><td class="v'+(strong?' vb':'')+'">'+attEsc(v||'')+'</td></tr>';
   const body=''
    +'<div class="hdr"><div class="brand">'+pkLogoImg(false)+'</div><div class="dt">'+pkNow()+'</div></div>'
@@ -2544,7 +2548,6 @@ async function pkPrintSticker(){
    +row('Style No:',o.styleNo)
    +'</table>'
    +'<div class="print-inline">Printed by: '+attEsc((typeof currentUser!=='undefined'&&currentUser&&(currentUser.name||currentUser.id))||'')+'</div>'
-   +barImg
    +'<div class="biglogo">'+pkLogoImg(true)+'</div>';
   const w=pkStickerW(), h=pkStickerH();
   const css='@page{size:'+w+'mm '+h+'mm;margin:4mm;}body{margin:4mm;}'
