@@ -463,17 +463,17 @@ select.form-input option{background:var(--surface2);}
           <button class="btn btn-primary btn-sm" id="order-new-btn" onclick="openOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>New Order Entry</button>
         </div>
       </div>
-      <div class="card" style="overflow:auto;"><table><thead><tr><th style="width:30px;"></th><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Req. Time / Delivered</th><th>Status</th><th>Note</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
+      <div class="card" style="overflow:auto;"><table><thead><tr><th style="width:30px;"></th><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Req. Time / Delivered</th><th>Status</th><th>DN Copy Downlod</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
     </div>
 
     <!-- SAMPLE PACKING -->
     <div class="page" id="page-packing">
       <div class="att-tabs">
-        <button class="att-tab active" data-pk="orders" onclick="pkSwitch('orders',this)">Orders · DN · Sticker</button>
-        <button class="att-tab" data-pk="trip" onclick="pkSwitch('trip',this)">Trip Schedule</button>
+        <button class="att-tab active" data-pk="orders" onclick="pkSwitch('orders',this)">Orders · DN · Sticker Print</button>
+        <button class="att-tab" data-pk="trip" onclick="pkSwitch('trip',this)">Trip Schedule Print</button>
         <button class="att-tab" data-pk="list" onclick="pkSwitch('list',this)">Trip List</button>
-        <button class="att-tab" data-pk="returns" onclick="pkSwitch('returns',this)">Returns</button>
-        <button class="att-tab" data-pk="import" onclick="pkSwitch('import',this)">Import Data</button>
+        <button class="att-tab" data-pk="returns" onclick="pkSwitch('returns',this)">Returns Trand</button>
+        <button class="att-tab" data-pk="import" onclick="pkSwitch('import',this)">Import Data Management</button>
       </div>
       <div id="pk-body"></div>
     </div>
