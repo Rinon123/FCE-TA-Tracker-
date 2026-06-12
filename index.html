@@ -2215,11 +2215,11 @@ async function pkDoImport(){
 }
 
 // ── Print (opens a clean popup, then the browser print dialog) ──
-function pkPrintWindow(title, bodyHtml, pageCss){
+function pkPrintWindow(title, bodyHtml, pageCss, opts){
   const w=window.open('','_blank','width=920,height=720');
   if(!w){ showToast('Please allow pop-ups for this site to print.','err'); return; }
   const who=(typeof currentUser!=='undefined'&&currentUser&&(currentUser.name||currentUser.id))||'';
-  const footer='<div class="print-by">Printed by: '+attEsc(who)+'</div>';
+  const footer=(opts&&opts.noFooter)?'':'<div class="print-by">Printed by: '+attEsc(who)+'</div>';
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title><style>'
     +'*{box-sizing:border-box;}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:18px;}'
     +'table{border-collapse:collapse;width:100%;margin-top:6px;}th,td{border:1px solid #333;padding:5px 7px;font-size:12px;text-align:left;vertical-align:top;}th{background:#eee;}'
@@ -2278,6 +2278,7 @@ async function pkPrintSticker(){
    +row('Requester Mobile No:',o.mobile)
    +row('Style No:',o.styleNo)
    +'</table>'
+   +'<div class="print-inline">Printed by: '+attEsc((typeof currentUser!=='undefined'&&currentUser&&(currentUser.name||currentUser.id))||'')+'</div>'
    +barImg
    +'<div class="biglogo">'+pkLogoImg(true)+'</div>';
   const w=pkStickerW(), h=pkStickerH();
@@ -2289,9 +2290,10 @@ async function pkPrintSticker(){
    +'.st td.l{font-weight:bold;width:44%;background:#f4f4f4;}'
    +'.st td.v{font-weight:600;}'
    +'.st td.vb{font-weight:800;font-size:13px;}'
+   +'.print-inline{font-size:10px;color:#555;margin-top:3px;text-align:left;}'
    +'.bc{text-align:center;margin-top:8px;}.bc img{max-width:80%;height:auto;}'
    +'.biglogo{text-align:center;margin-top:22mm;}';
-  pkPrintWindow('Sticker '+o.orderNo, body, css);
+  pkPrintWindow('Sticker '+o.orderNo, body, css, {noFooter:true});
 }
 function pkTripPrintRows(rows,date,road){
   if(!rows.length){ showToast('Nothing to print — tick rows or add orders first.','err'); return; }
