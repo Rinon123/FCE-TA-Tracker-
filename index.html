@@ -2279,12 +2279,13 @@ function pkRenderImport(){
      <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="pkDoImport()">Import</button>
      <div id="pk-import-status" style="margin-top:12px;font-size:13px;color:var(--muted);"></div>
      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
-       <div class="form-label">Master data for enrichment (Tex &amp; CS mobile)</div>
-       <div style="font-size:12px;color:var(--muted);margin:4px 0 10px;line-height:1.6;">Upload once; changes only 2–3×/year, shared to all PCs. <b>Tex</b> is taken from the ART/TKT list (by article); the <b>CS name</b> is read from the email before <span class="mono">@coats.com</span> and the <b>CS mobile</b> from the Customer Mapping.</div>
+       <div class="form-label">Master data for enrichment (Tex &amp; CS mobile) <span style="float:right;font-weight:400;color:var(--muted);font-size:11px;">build 2026-06-13c</span></div>
+       <div style="font-size:12px;color:var(--muted);margin:4px 0 10px;line-height:1.6;">Upload once; shared to all PCs. <b>Tex</b> comes from the ART/TKT list; the <b>CS mobile</b> from the Customer Mapping (matched by the email before <span class="mono">@coats.com</span>).</div>
        <div style="display:flex;gap:22px;flex-wrap:wrap;">
-         <div><div style="font-size:12px;margin-bottom:4px;">ART/TKT list — <b style="color:var(--accent2);">${PKM.texCount?PKM.texCount.toLocaleString()+' articles':'not loaded'}</b></div><label class="btn btn-ghost btn-sm" style="cursor:pointer;">Upload ART/TKT<input type="file" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="pkmUpload('tex',this)"/></label></div>
-         <div><div style="font-size:12px;margin-bottom:4px;">Customer Mapping — <b style="color:var(--accent2);">${PKM.csCount?PKM.csCount.toLocaleString()+' CS contacts':'not loaded'}</b></div><label class="btn btn-ghost btn-sm" style="cursor:pointer;">Upload Customer Mapping<input type="file" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="pkmUpload('cs',this)"/></label></div>
+         <div><div style="font-size:12px;margin-bottom:4px;">ART/TKT list — <b style="color:${PKM.texCount?'var(--green)':'var(--red)'};">${PKM.texCount?PKM.texCount.toLocaleString()+' articles ✓':'NOT LOADED'}</b></div><label class="btn btn-ghost btn-sm" style="cursor:pointer;">Upload ART/TKT<input type="file" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="pkmUpload('tex',this)"/></label></div>
+         <div><div style="font-size:12px;margin-bottom:4px;">Customer Mapping — <b style="color:${PKM.csCount?'var(--green)':'var(--red)'};">${PKM.csCount?PKM.csCount.toLocaleString()+' CS contacts ✓':'NOT LOADED'}</b></div><label class="btn btn-ghost btn-sm" style="cursor:pointer;">Upload Customer Mapping<input type="file" accept=".xlsx,.xlsm,.csv" style="display:none;" onchange="pkmUpload('cs',this)"/></label></div>
        </div>
+       ${pkmSelfTest()}
      </div>
      <div style="margin-top:14px;font-size:12px;color:var(--muted);line-height:1.6;">Matches your <b>DN RAW Sheet</b> columns (any order): Ship to Party Name · Ship to Party Address · Requester · Requester Mobile · Business Principal Name · Customer Order Ref. No · Customer Reference Line No. · Coats Material No. · Brand · Size/Tkt · Shade Code · Ordered Qty · Creation Date · Customer Service Executive · StyleNo/ProductionNo · Comments/Remarks · COATS BRAND/ Tex · PRODUCT CODE · Customer Service Name.<br>A first full import of many rows can take a minute — keep the tab open. Duplicate rows are merged automatically.</div>
 
@@ -2437,6 +2438,12 @@ function pkmEnrich(o){
   o.imported_at=new Date().toISOString();
 }
 async function dbPkPurgeOld(){ const cutoff=new Date(Date.now()-90*86400000).toISOString(); try{ const {error}=await sb.from('sample_lines').delete().lt('imported_at',cutoff); if(error)throw error; }catch(e){} }
+function pkmSelfTest(){
+  if(!PKM.csMob||!PKM.csMob.size) return '<div style="margin-top:12px;font-size:12px;color:var(--red);line-height:1.6;">⚠ <b>CS mobile lookup is empty.</b> Click <b>Upload Customer Mapping</b> above and pick <span class="mono">Customer_Mapping_May_26.xlsx</span> — the count should change to ~32. Then just re-open the DN (no re-import needed for the mobile).</div>';
+  const e=PKM.csMob.keys().next().value; const m=PKM.csMob.get(e);
+  const tam=PKM.csMob.get('tamanna.hannan@coats.com');
+  return '<div style="margin-top:12px;font-size:12px;color:var(--green);line-height:1.6;">✓ <b>Mobile lookup ready.</b> e.g. '+attEsc(e)+' → '+attEsc(m)+(tam?(' · tamanna.hannan → '+attEsc(tam)):'')+'. The DN fills the mobile from the CS name automatically.</div>';
+}
 function pkFieldFor(header){ const h=pkNorm(header); const h2=h.replace(/[.\s]+$/,'').replace(/\.$/,''); for(const [keys,field] of PK_HMAP){ if(keys.includes(h)||keys.includes(h2)||keys.some(k=>k.replace(/[.\s]+$/,'')===h2))return field; } return null; }
 async function pkDoImport(){
   const fi=document.getElementById('pk-file'); const f=fi&&fi.files[0];
