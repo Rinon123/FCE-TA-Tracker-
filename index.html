@@ -2438,6 +2438,14 @@ function pkmEnrich(o){
   o.imported_at=new Date().toISOString();
 }
 async function dbPkPurgeOld(){ const cutoff=new Date(Date.now()-90*86400000).toISOString(); try{ const {error}=await sb.from('sample_lines').delete().lt('imported_at',cutoff); if(error)throw error; }catch(e){} }
+function pkCreationMs(v){
+  if(v==null||v==='')return 0;
+  if(v instanceof Date)return v.getTime();
+  const s=(''+v).trim();
+  const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if(m){ let d=+m[1],mo=+m[2],y=+m[3]; if(y<100)y+=2000; const dt=new Date(y,mo-1,d,+(m[4]||0),+(m[5]||0)); if(!isNaN(dt.getTime()))return dt.getTime(); }
+  const t=Date.parse(s); return isNaN(t)?0:t;
+}
 function pkmSelfTest(){
   if(!PKM.csMob||!PKM.csMob.size) return '<div style="margin-top:12px;font-size:12px;color:var(--red);line-height:1.6;">⚠ <b>CS mobile lookup is empty.</b> Click <b>Upload Customer Mapping</b> above and pick <span class="mono">Customer_Mapping_May_26.xlsx</span> — the count should change to ~32. Then just re-open the DN (no re-import needed for the mobile).</div>';
   const e=PKM.csMob.keys().next().value; const m=PKM.csMob.get(e);
@@ -2467,7 +2475,7 @@ async function pkDoImport(){
     if(hdrIdx<0)hdrIdx=0;
     const headers=(aoa[hdrIdx]||[]).map(pkFieldFor);
     if(!headers.includes('order_no')){ st.innerHTML='<span style="color:var(--red);">Could not find a "Customer Order Ref. No" column. Check the file headers.</span>'; return; }
-    const byId={};
+    const byId={}; let dupMerged=0;
     for(let i=hdrIdx+1;i<aoa.length;i++){
       const row=aoa[i]||[]; const o={};
       headers.forEach((field,c)=>{ if(field)o[field]=row[c]; });
@@ -2483,15 +2491,18 @@ async function pkDoImport(){
       else if(o.creation_date!=null)o.creation_date=(''+o.creation_date).trim();
       o.id=[o.order_no,o.line_no,(o.shade||''),(o.material_no||'')].join('|');
       pkmEnrich(o); // Tex + CS name/mobile from master; sets imported_at; drops cs_exec
-      byId[o.id]=o; // de-duplicate: identical keys collapse to one row
+      const prev=byId[o.id];
+      if(prev){ dupMerged++; if(pkCreationMs(o.creation_date)>=pkCreationMs(prev.creation_date))byId[o.id]=o; } // keep the newest record for a repeated line
+      else byId[o.id]=o;
     }
     const recs=Object.values(byId);
     if(!recs.length){ st.innerHTML='<span style="color:var(--red);">No data rows found in the file.</span>'; return; }
     let done=0; const batch=400;
     for(let i=0;i<recs.length;i+=batch){ await dbPkUpsert(recs.slice(i,i+batch)); done+=Math.min(batch,recs.length-i); st.textContent=`Imported ${done} / ${recs.length}…`; }
     await dbPkPurgeOld();
-    st.innerHTML=`<span style="color:var(--green);font-weight:600;">Done — ${recs.length} order lines added / updated.</span> <span style="color:var(--muted);">Data is kept cumulatively; lines older than 3 months are removed automatically.</span>`;
-    showToast('Import complete: '+recs.length+' lines (added to the cumulative 3-month dataset).');
+    const dupNote=dupMerged?` <span style="color:var(--muted);">${dupMerged} duplicate row${dupMerged>1?'s':''} in the file ignored — newest kept.</span>`:'';
+    st.innerHTML=`<span style="color:var(--green);font-weight:600;">Done — ${recs.length} order lines added / updated.</span>${dupNote} <span style="color:var(--muted);">Kept cumulatively; lines older than 3 months auto-removed.</span>`;
+    showToast('Import complete: '+recs.length+' lines'+(dupMerged?(' · '+dupMerged+' duplicate(s) ignored'):'')+'.');
   }catch(e){ st.innerHTML='<span style="color:var(--red);">Import failed: '+attEsc(e.message)+'</span>'; }
 }
 
