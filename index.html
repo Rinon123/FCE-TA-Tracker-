@@ -434,9 +434,11 @@ select.form-input option{background:var(--surface2);}
           <input class="filter-sel" type="text" id="order-no-filter" placeholder="Filter by Order No…" oninput="renderOrders()" style="width:160px;"/>
           <select class="filter-sel" id="order-task-filter" onchange="renderOrders()"><option value="">All tasks</option><option>Swatch Collection</option><option>Sample Delivery</option></select>
           <select class="filter-sel" id="order-zone-filter" onchange="renderOrders()"><option value="">All zones</option></select>
+          <select class="filter-sel" id="order-service-filter" onchange="renderOrders()"><option value="">All services</option></select>
           <input class="filter-sel" type="text" id="order-resp-filter" list="order-resp-list" placeholder="Responsibility to…" oninput="renderOrders()" style="width:165px;"/>
           <datalist id="order-resp-list"></datalist>
           <span class="count-badge" id="order-count">—</span>
+          <button class="btn btn-ghost btn-sm" onclick="openServiceReview()" title="Service performance review — by month, service & task"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Service Review</button>
           <button class="btn btn-ghost btn-sm" id="order-csend-btn" onclick="openCombinedSendModal()" title="Send one combined message per assigned person"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send combined</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadOrders()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download CSV</button>
           <button class="btn btn-primary btn-sm" id="order-new-btn" onclick="openOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>New Order Entry</button>
@@ -561,6 +563,22 @@ select.form-input option{background:var(--surface2);}
     <button class="btn btn-primary" id="o-savebulk-btn" style="display:none;" disabled onclick="saveOrderBulk()">Save orders</button>
     <button class="btn btn-primary" id="o-save-btn" style="display:none;" onclick="saveOrder()">Save Order</button>
   </div>
+</div></div>
+
+<div class="modal-overlay" id="service-review-modal"><div class="modal" style="max-width:760px;">
+  <div class="modal-header"><h3>Service Performance Review</h3><button class="btn-icon" onclick="closeModal('service-review-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal-body" id="service-review-body"></div>
+  <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('service-review-modal')">Close</button></div>
+</div></div>
+
+<div class="modal-overlay" id="pk-road-modal"><div class="modal" style="max-width:420px;">
+  <div class="modal-header"><h3 id="pk-road-title">Add to Trip</h3><button class="btn-icon" onclick="closeModal('pk-road-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal-body">
+    <div class="form-group"><label class="form-label">Road / Delivery Zone *</label><select class="form-input" id="pk-road-sel"></select></div>
+    <div class="form-group"><label class="form-label">Carton Qty</label><input class="form-input" id="pk-road-carton" type="number" min="0" value="1"/></div>
+    <div id="pk-road-note" style="font-size:12px;color:var(--muted);"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('pk-road-modal')">Cancel</button><button class="btn btn-primary" id="pk-road-confirm" onclick="pkRoadConfirm()">Add to Trip</button></div>
 </div></div>
 
 <div class="modal-overlay" id="send-modal"><div class="modal">
@@ -920,7 +938,7 @@ function renderSummary(){
   document.getElementById('dash-month-sub').textContent=(mf==='all'?'All months':monthLabel(mf))+' — approved entries';
   const rc=['#f5a623','#a0a0b8','#c47a4e'];
   document.getElementById('summary-table').innerHTML=data.map((r,i)=>{
-    const cpv=r.visits?Math.round(r.ta/r.visits):0, vpd=r.days?(r.visits/r.days).toFixed(1):'—', pct=total?Math.round(r.ta/total*100):0, c=fceColor(r.name), rcol=i<3?rc[i]:'#aeb4d6';
+    const cpv=r.visits?Math.round(r.ta/r.visits):0, vpd=r.days?(r.visits/r.days).toFixed(1):'—', pct=total?Math.round(r.ta/total*100):0, c=distinctColor(i,data.length), rcol=i<3?rc[i]:'#aeb4d6';
     return `<tr><td><span class="rank-badge" style="background:${rcol}26;color:${rcol};font-weight:700;">${i+1}</span></td><td><span class="fw6" style="color:${c};">${r.name}</span></td><td class="mono">${r.days}</td><td class="mono">${r.visits}</td><td class="mono fw6">৳${r.ta.toLocaleString()}</td><td class="mono">৳${Math.round(r.ta/Math.max(1,r.days)).toLocaleString()}</td><td class="mono">৳${cpv}</td><td class="mono">${vpd}</td><td><div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c};"></div></div><span class="pct">${pct}%</span></div></td></tr>`;
   }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">No approved entries yet</td></tr>`;
   updateSidebarTotal();
@@ -1377,18 +1395,45 @@ function buildOrderStatusBar(){
 function setOrderStatus(s,btn){ activeOrderStatus=s; document.querySelectorAll('#order-status-bar .month-chip').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderOrders(); }
 function orderStatusBadge(s){ const m={'Requested':'s-pending','Collected':'s-draft','In Development':'s-pending','Delivered':'s-approved'}; return `<span class="status-badge ${m[s]||'s-draft'}">${s}</span>`; }
 let visibleOrders=[];
+let __svcMonth='all';
+function openServiceReview(){ if(!canSee('orders')){ showToast('No access.','err'); return; } __svcMonth='all'; renderServiceReview(); document.getElementById('service-review-modal').classList.add('open'); }
+function setSvcMonth(m){ __svcMonth=m; renderServiceReview(); }
+function renderServiceReview(){
+  const months=[...new Set(scopedOrders().map(o=>(o.date||'').slice(0,7)).filter(Boolean))].sort().reverse();
+  const chips=['all',...months].map(m=>`<button class="month-chip ${__svcMonth===m?'active':''}" onclick="setSvcMonth('${m}')">${m==='all'?'All months':monthLabel(m)}</button>`).join('');
+  const orders=scopedOrders().filter(o=>__svcMonth==='all'||((o.date||'').slice(0,7)===__svcMonth));
+  const svcMap={};
+  orders.forEach(o=>{ const s=o.service||'(unassigned)'; const t=o.task||''; if(!svcMap[s])svcMap[s]={swatch:0,delivery:0,total:0,delivered:0}; if(t==='Sample Delivery')svcMap[s].delivery++; else if(t==='Swatch Collection')svcMap[s].swatch++; svcMap[s].total++; if(o.status==='Delivered')svcMap[s].delivered++; });
+  const svcs=Object.keys(svcMap).sort((a,b)=>svcMap[b].total-svcMap[a].total);
+  let tS=0,tD=0,tT=0,tDel=0;
+  const rows=svcs.map((s,i)=>{ const r=svcMap[s]; tS+=r.swatch;tD+=r.delivery;tT+=r.total;tDel+=r.delivered; const c=distinctColor(i,svcs.length); return `<tr><td><span class="fw6" style="color:${c};">${attEsc(s)}</span></td><td class="mono">${r.swatch}</td><td class="mono">${r.delivery}</td><td class="mono fw6">${r.total}</td><td class="mono">${r.delivered}</td></tr>`; }).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:18px;">No orders for this period.</td></tr>';
+  const foot=svcs.length?`<tr style="font-weight:700;background:var(--surface2);"><td>Total</td><td class="mono">${tS}</td><td class="mono">${tD}</td><td class="mono">${tT}</td><td class="mono">${tDel}</td></tr>`:'';
+  document.getElementById('service-review-body').innerHTML=`
+    <div class="month-bar" style="margin-bottom:12px;flex-wrap:wrap;">${chips}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <div class="metric-card mc-purple" style="flex:1;min-width:120px;"><div class="mc-label">Consignments</div><div class="mc-value">${tT}</div><div class="mc-sub">${__svcMonth==='all'?'all months':monthLabel(__svcMonth)}</div></div>
+      <div class="metric-card mc-teal" style="flex:1;min-width:120px;"><div class="mc-label">Swatch Collection</div><div class="mc-value">${tS}</div></div>
+      <div class="metric-card mc-amber" style="flex:1;min-width:120px;"><div class="mc-label">Sample Delivery</div><div class="mc-value">${tD}</div></div>
+      <div class="metric-card mc-green" style="flex:1;min-width:120px;"><div class="mc-label">Delivered</div><div class="mc-value">${tDel}</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">How many consignments each service (Courier / FCE / Supply-Chain Van) handled — split by task.</div>
+    <div style="overflow:auto;"><table><thead><tr><th>Service By</th><th>Swatch Collection</th><th>Sample Delivery</th><th>Total Consignments</th><th>Delivered</th></tr></thead><tbody>${rows}</tbody><tfoot>${foot}</tfoot></table></div>`;
+}
 function renderOrders(){
   buildOrderStatusBar();
   const taskF=document.getElementById('order-task-filter').value;
   const zoneF=(document.getElementById('order-zone-filter')||{}).value||'';
+  const serviceF=(document.getElementById('order-service-filter')||{}).value||'';
   const respF=((document.getElementById('order-resp-filter')||{}).value||'').toLowerCase().trim();
   const noF=(document.getElementById('order-no-filter').value||'').toLowerCase().trim();
   const srch=document.getElementById('global-search').value.toLowerCase();
   { const dl=document.getElementById('order-resp-list'); if(dl){ const names=[...new Set(scopedOrders().map(o=>o.fce).filter(Boolean))].sort((a,b)=>(''+a).localeCompare(''+b)); dl.innerHTML=names.map(n=>`<option value="${attEsc(n)}"></option>`).join(''); } }
+  { const sf=document.getElementById('order-service-filter'); if(sf){ const cur=sf.value; const svcs=[...new Set([...DEFAULT_SERVICE_BY,...DELIVERY_SERVICES,...scopedOrders().map(o=>o.service).filter(Boolean)])].sort((a,b)=>(''+a).localeCompare(''+b)); sf.innerHTML='<option value="">All services</option>'+svcs.map(s=>`<option ${cur===s?'selected':''}>${attEsc(s)}</option>`).join(''); } }
   let rows=scopedOrders().filter(o=>{
     if(activeOrderStatus!=='all'&&o.status!==activeOrderStatus)return false;
     if(taskF&&o.task!==taskF)return false;
     if(zoneF&&(o.to||'')!==zoneF)return false;
+    if(serviceF&&(o.service||'')!==serviceF)return false;
     if(respF&&!((o.fce||'').toLowerCase().includes(respF)))return false;
     if(noF&&!(o.orderNo||'').toLowerCase().includes(noF))return false;
     if(srch&&!(o.customer||'').toLowerCase().includes(srch)&&!(o.buyer||'').toLowerCase().includes(srch)&&!(o.orderNo||'').toLowerCase().includes(srch)&&!(o.fce||'').toLowerCase().includes(srch))return false;
@@ -1543,17 +1588,21 @@ async function saveOrderBulk(){
   if(!oBulkRows.length){ showToast('Nothing to save — upload a file first.','err'); return; }
   const btn=document.getElementById('o-savebulk-btn'); const orig=btn.textContent; btn.disabled=true; btn.innerHTML='<span class="loader"></span> Saving…';
   try{
-    let ok=0;
+    let ok=0, skipped=0;
+    const seen=new Set(getOrders().map(x=>((x.orderNo||'').trim().toLowerCase()+'|'+(x.task||''))));
     for(const r of oBulkRows){
+      const ono=(r.orderNo||'').trim(); const key=ono.toLowerCase()+'|'+task;
+      if(ono && seen.has(key)){ skipped++; continue; } // duplicate order no for the same task — skip
+      if(ono) seen.add(key);
       const o={ id:'o_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), date, task,
-        orderNo:(r.orderNo||'').trim(), service:r.service||'', customer:r.customer||'', buyer:r.buyer||'', fce:'',
+        orderNo:ono, service:r.service||'', customer:r.customer||'', buyer:r.buyer||'', fce:'',
         reqTime:(task==='Swatch Collection'?(r.req||''):''), to:r.zone||null,
         status:r.status||'Requested', deliveredAt:(task==='Sample Delivery'?(oToISO(r.req)||null):null),
         remarks:r.remarks||'', createdBy:currentUser.id };
       await dbUpsertOrder(orderToRow(o)); ok++;
     }
     await refreshAll(); closeModal('order-modal'); showPage('orders');
-    showToast(ok+' order'+(ok>1?'s':'')+' added to the tracker.');
+    showToast(ok+' order'+(ok!==1?'s':'')+' added'+(skipped?(' · '+skipped+' duplicate(s) skipped'):'')+'.');
   }catch(e){ showToast('Save failed: '+e.message,'err'); btn.disabled=false; btn.textContent=orig; }
 }
 function openOrderModal(id){
@@ -1613,6 +1662,10 @@ async function saveOrder(){
     status:document.getElementById('o-status').value, deliveredAt:document.getElementById('o-delivered').value||null,
     remarks:document.getElementById('o-remarks').value.trim(), createdBy:currentUser.id };
   if(editingOrderId){ const ex=getOrders().find(x=>x.id===editingOrderId); if(ex){ o.noteFile=ex.noteFile; o.noteName=ex.noteName; } }
+  if(o.orderNo){
+    const dup=getOrders().find(x=>x.id!==o.id && (x.orderNo||'').trim().toLowerCase()===o.orderNo.toLowerCase() && (x.task||'')===o.task);
+    if(dup){ showToast('Duplicate: order '+o.orderNo+' already exists for task “'+o.task+'”.','err'); return; }
+  }
   const fileInput=document.getElementById('o-file');
   const btn=document.getElementById('o-save-btn');
   try{
@@ -1709,6 +1762,7 @@ async function attRender(){
 /* ── MARK ── */
 function attRenderMark(){
   if(!attDate)attDate=attTodayIso();
+  if(!(isAdmin()||isAuthorizer()))attDate=attTodayIso(); // only Super Admin / Authorizer can change the date
   const body=document.getElementById('att-body');
   const lock=tlLockedLoc(); if(lock)attLoc=lock;
   const locCtl = lock
@@ -1721,7 +1775,7 @@ function attRenderMark(){
     + `<span><i style="background:${ATTCOL.holiday}"></i>Holiday</span>`;
   body.innerHTML=`
     <div class="detail-meta"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <input class="filter-sel" type="date" value="${attDate}" onchange="attSetDate(this.value)" style="width:160px;"/>
+      <input class="filter-sel" type="date" value="${attDate}" ${(isAdmin()||isAuthorizer())?'onchange="attSetDate(this.value)"':'disabled title="Date is fixed to today — only Super Admin / Authorizer can change it"'} style="width:160px;"/>
       ${locCtl}
       <select class="filter-sel" onchange="attTitle=this.value;attRenderRows()">${titOpts}</select>
       <input class="filter-sel" type="text" placeholder="Search name / ID…" value="${attEsc(attSearch)}" oninput="attSearch=this.value;attRenderRows()" style="width:160px;"/>
@@ -2153,10 +2207,8 @@ function pkRenderOrderView(){
     <div class="card-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="btn btn-ghost btn-sm" onclick="pkPrintDN()">🖨 DN Copy</button>
       <button class="btn btn-ghost btn-sm" onclick="pkPrintSticker()">🖨 Sticker</button>
-      <button class="btn btn-primary btn-sm" onclick="pkAddToTrip()">Add to Trip</button>
-      <input class="filter-sel" id="pk-ov-carton" type="number" min="0" value="1" style="width:90px;" title="Carton Qty"/>
-      <select class="filter-sel" id="pk-return-road" style="min-width:130px;" title="Road for the return"><option value="">Road…</option>${getZones().map(z=>`<option>${attEsc(z)}</option>`).join('')}</select>
-      <button class="btn btn-ghost btn-sm" onclick="pkAddReturn()" title="Record this order as a return">↩ Add to Return</button>
+      <button class="btn btn-primary btn-sm" onclick="pkOpenRoadModal('trip')">Add to Trip</button>
+      <button class="btn btn-primary btn-sm" onclick="pkOpenRoadModal('return')" title="Record this order as a return">↩ Add to Return</button>
     </div></div>
     <div style="padding:0 16px 8px;"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 18px;font-size:13px;padding:8px 0;">
       <div><span style="color:var(--muted);">Creation:</span> ${pkFmtDate(o.creationDate)}</div>
@@ -2171,16 +2223,43 @@ function pkRenderOrderView(){
 function pkToggleLine(i){ if(!pkOrder)return; const s=pkOrder._sel; if(s.has(i))s.delete(i); else s.add(i); pkRenderOrderView(); }
 function pkToggleAllLines(on){ if(!pkOrder)return; pkOrder._sel=new Set(on?pkOrder.lines.map((_,i)=>i):[]); pkRenderOrderView(); }
 function pkSelectedLines(){ if(!pkOrder)return []; const s=pkOrder._sel; return pkOrder.lines.filter((_,i)=>s.has(i)); }
-function pkAddToTrip(){ if(!pkOrder)return; pkPendingTripOrder=pkOrder.orderNo; pkPendingCarton=(document.getElementById('pk-ov-carton')||{}).value||'1'; pkTab='trip'; pkRender(); showToast('Order ready — confirm carton qty and add it to the trip.'); }
-async function pkAddReturn(){
+let __pkRoadMode='trip';
+function pkOpenRoadModal(mode){
+  if(!pkOrder){ showToast('Open an order first.','err'); return; }
+  __pkRoadMode=mode;
+  const zones=getZones();
+  if(!zones.length){ showToast('No delivery roads yet — add them in Master Data → Delivery Zones.','err'); return; }
+  document.getElementById('pk-road-title').textContent=mode==='return'?'Add to Return':'Add to Trip';
+  document.getElementById('pk-road-confirm').textContent=mode==='return'?'Add Return':'Add to Trip';
+  document.getElementById('pk-road-sel').innerHTML='<option value="">— select road —</option>'+zones.map(z=>`<option>${attEsc(z)}</option>`).join('');
+  document.getElementById('pk-road-carton').value='1';
+  const sel=pkSelectedLines(); const n=sel.length?sel.length:pkOrder.lines.length;
+  document.getElementById('pk-road-note').textContent=n+' line(s) of order '+pkOrder.orderNo+' will be added to today\u2019s '+(mode==='return'?'return':'trip')+' schedule.';
+  document.getElementById('pk-road-modal').classList.add('open');
+}
+async function pkRoadConfirm(){
+  const road=((document.getElementById('pk-road-sel')||{}).value||'').trim();
+  if(!road){ showToast('Please select a road name first — it is required.','err'); return; }
+  const carton=parseInt((document.getElementById('pk-road-carton')||{}).value,10)||0;
+  closeModal('pk-road-modal');
+  if(__pkRoadMode==='return') await pkDoAddReturn(road,carton); else await pkDoAddTrip(road,carton);
+}
+async function pkDoAddTrip(road,carton){
   if(!pkOrder)return; const o=pkOrder;
-  const road=((document.getElementById('pk-return-road')||{}).value||'').trim();
-  if(!road){ showToast('Select a road name before adding the return.','err'); return; }
+  const today=new Date().toISOString().split('T')[0];
   const sel=pkSelectedLines(); const used=(sel.length?sel:o.lines);
   const lineNos=used.map(l=>l.line_no).filter(x=>x!=null&&x!=='').join(',');
   const totalQty=used.reduce((s,l)=>s+(parseFloat(l.qty)||0),0);
-  const carton=parseInt((document.getElementById('pk-ov-carton')||{}).value,10)||0;
-  // Return number is scoped to the SAME order + SAME line numbers
+  const serial=(CACHE.trips||[]).filter(t=>t.kind!=='return'&&t.trip_date===today&&(t.road||'')===road).length+1;
+  const rec={id:'trip_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),kind:'trip',trip_date:today,road,serial,ship_to:o.shipTo,order_no:o.orderNo,line_nos:lineNos,total_qty:totalQty,carton_qty:carton,created_by:currentUser.id,created_at:new Date().toISOString()};
+  try{ await dbInsertTrip([rec]); await pkLoadTrips(true); pkTripDate=today; pkTripRoad=road; pkTab='trip'; pkRender(); showToast('Added to trip — '+road+' · '+o.orderNo+' (lines '+(lineNos||'—')+').'); }
+  catch(e){ showToast('Failed: '+e.message,'err'); }
+}
+async function pkDoAddReturn(road,carton){
+  if(!pkOrder)return; const o=pkOrder;
+  const sel=pkSelectedLines(); const used=(sel.length?sel:o.lines);
+  const lineNos=used.map(l=>l.line_no).filter(x=>x!=null&&x!=='').join(',');
+  const totalQty=used.reduce((s,l)=>s+(parseFloat(l.qty)||0),0);
   const prev=(CACHE.trips||[]).filter(t=>t.kind==='return'&&t.order_no===o.orderNo&&(t.line_nos||'')===lineNos).length;
   const rno=prev+1;
   const rec={id:'ret_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),kind:'return',return_no:rno,trip_date:new Date().toISOString().split('T')[0],road:road,serial:rno,ship_to:o.shipTo,order_no:o.orderNo,line_nos:lineNos,total_qty:totalQty,carton_qty:carton,created_by:currentUser.id,created_at:new Date().toISOString()};
@@ -2214,7 +2293,7 @@ function pkRenderTripRows(){
   if(!pkTripRoad){ box.innerHTML='<div class="card"><div style="padding:16px;color:var(--muted);">Select a road to start building this trip.</div></div>'; return; }
   const rows=(CACHE.trips||[]).filter(t=>t.kind!=='return'&&t.trip_date===pkTripDate&&(t.road||'')===pkTripRoad).sort((a,b)=>(a.serial||0)-(b.serial||0));
   let tq=0,tc=0;
-  const body=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return `<tr><td style="text-align:center;"><input type="checkbox" ${pkTripSel.has(t.id)?'checked':''} onchange="pkTripTick('${t.id}')"/></td><td>${i+1}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td>${attEsc(t.carton_qty)}</td><td>${isPacker()?'':`<button class="btn btn-reject btn-sm" onclick="pkTripDelete('${t.id}')">Remove</button>`}</td></tr>`;}).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:16px;">No orders added yet.</td></tr>`;
+  const body=rows.map((t,i)=>{tq+=+t.total_qty||0;tc+=+t.carton_qty||0;return `<tr><td style="text-align:center;"><input type="checkbox" ${pkTripSel.has(t.id)?'checked':''} onchange="pkTripTick('${t.id}')"/></td><td>${i+1}</td><td>${attEsc(t.ship_to)}</td><td>${attEsc(t.order_no)}</td><td style="font-size:12px;">${attEsc(t.line_nos)}</td><td>${attEsc(t.total_qty)}</td><td><input type="number" min="0" value="${t.carton_qty||0}" onchange="pkTripSetCarton('${t.id}',this.value)" class="filter-sel" style="width:72px;padding:4px 6px;" title="Carton qty (editable)"/></td><td>${isPacker()?'':`<button class="btn btn-reject btn-sm" onclick="pkTripDelete('${t.id}')">Remove</button>`}</td></tr>`;}).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:16px;">No orders added yet.</td></tr>`;
   const allOn=rows.length&&rows.every(t=>pkTripSel.has(t.id));
   box.innerHTML=`<div class="card"><div class="card-header"><div><div class="card-title">Trip — ${fmtDate(pkTripDate)} · ${attEsc(pkTripRoad)}</div><div class="card-sub">Total Qty ${tq} · Cartons ${tc} · tick rows to print only those (renumbered 1,2,3…)</div></div><div class="card-actions"><button class="btn btn-ghost btn-sm" onclick="pkPrintTrip()">🖨 Print Trip</button></div></div>
    <div style="overflow:auto;"><table><thead><tr><th style="width:30px;text-align:center;"><input type="checkbox" ${allOn?'checked':''} onchange="pkTripTickAll(this.checked)" title="Tick all"/></th><th>Serial</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Qty</th><th>Cartons</th><th></th></tr></thead><tbody>${body}</tbody></table></div></div>`;
@@ -2236,6 +2315,7 @@ async function pkTripAdd(){
   }catch(e){ showToast('Failed: '+e.message,'err'); }
 }
 async function pkTripDelete(id){ if(packerBlocked())return; if(!confirm('Remove this order from the trip?'))return; try{ await dbDeleteTrip(id); await pkLoadTrips(true); pkRenderTripRows(); }catch(e){ showToast('Failed: '+e.message,'err'); } }
+async function pkTripSetCarton(id,val){ const carton=parseInt(val,10)||0; try{ const {error}=await sb.from('trip_schedule').update({carton_qty:carton}).eq('id',id); if(error)throw error; await pkLoadTrips(true); pkRenderTripRows(); }catch(e){ showToast('Carton update failed: '+e.message,'err'); } }
 
 // ── Trip List ──
 function pkRenderList(){
@@ -2244,6 +2324,7 @@ function pkRenderList(){
     <div class="card-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
       <select class="filter-sel" id="pk-list-kind" onchange="pkListKind=this.value;pkRenderListRows()"><option value="">All types</option><option value="trip" ${pkListKind==='trip'?'selected':''}>Trips only</option><option value="return" ${pkListKind==='return'?'selected':''}>Returns only</option></select>
       <select class="filter-sel" id="pk-list-road" onchange="pkRenderListRows()"><option value="">All roads</option>${zones.map(z=>`<option>${attEsc(z)}</option>`).join('')}</select>
+      <input class="filter-sel" type="text" id="pk-list-search" placeholder="Search Order No…" oninput="pkRenderListRows()" style="width:165px;"/>
       <input class="filter-sel" type="date" id="pk-list-date" onchange="pkRenderListRows()" style="width:150px;"/>
       <button class="btn btn-ghost btn-sm" onclick="pkPrintSelectedList()">🖨 Print selected</button>
       <button class="btn btn-ghost btn-sm" onclick="pkExportList()">Download CSV</button>
@@ -2254,11 +2335,13 @@ function pkRenderList(){
 function pkListFiltered(){
   const road=(document.getElementById('pk-list-road')||{}).value||'';
   const date=(document.getElementById('pk-list-date')||{}).value||'';
+  const q=((document.getElementById('pk-list-search')||{}).value||'').toLowerCase().trim();
   return (CACHE.trips||[]).filter(t=>{
     const kind=t.kind==='return'?'return':'trip';
     if(pkListKind&&kind!==pkListKind)return false;
     if(road&&t.road!==road)return false;
     if(date&&t.trip_date!==date)return false;
+    if(q&&!((t.order_no||'').toLowerCase().includes(q)))return false;
     return true;
   }).sort((a,b)=>(''+b.trip_date).localeCompare(''+a.trip_date)||(a.serial||0)-(b.serial||0));
 }
@@ -2316,6 +2399,13 @@ function pkRenderReturns(){
   const byCust={}; rets.forEach(r=>{ const c=r.ship_to||'—'; byCust[c]=(byCust[c]||0)+1; });
   const custTop=Object.entries(byCust).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const tblData=rets.slice().sort((a,b)=>(''+b.trip_date).localeCompare(''+a.trip_date));
+  // Day-wise repeat frequency: orders returned on more than one distinct day, bucketed 2/3/4/5+
+  const daysByOrder={};
+  rets.forEach(r=>{ const k=r.order_no||'—'; if(!daysByOrder[k])daysByOrder[k]={days:new Set(),cust:r.ship_to||''}; daysByOrder[k].days.add((r.trip_date||'').slice(0,10)); });
+  const freq={'2':[],'3':[],'4':[],'5':[]};
+  Object.entries(daysByOrder).forEach(([k,v])=>{ const n=v.days.size; if(n<2)return; const b=n>=5?'5':String(n); freq[b].push({order:k,cust:v.cust}); });
+  const freqDefs=[['2','Returned on 2 days'],['3','Returned on 3 days'],['4','Returned on 4 days'],['5','Returned on 5+ days']];
+  const freqRows=freqDefs.map(([key,label])=>{ const list=freq[key]; const items=list.map(x=>attEsc(x.order)+(x.cust?(' ('+attEsc(x.cust)+')'):'')).join(', '); return `<tr><td style="white-space:nowrap;font-weight:600;">${label}</td><td class="mono" style="text-align:center;font-weight:700;color:${list.length?'#e0913a':'var(--muted)'};">${list.length}</td><td style="font-size:12px;color:var(--muted);">${items||'—'}</td></tr>`; }).join('');
   const tableRows=tblData.map(r=>`<tr><td><span style="font-size:11px;font-weight:600;color:#e0913a;">Return-${r.return_no||1}</span></td><td style="white-space:nowrap;">${fmtDate(r.trip_date)}</td><td>${attEsc(r.ship_to)}</td><td>${attEsc(r.order_no)}</td><td style="font-size:12px;">${attEsc(r.line_nos)}</td><td>${attEsc(r.road)||'—'}</td><td>${attEsc(r.total_qty)}</td><td>${isPacker()?'':`<button class="btn btn-reject btn-sm" onclick="pkListDelete('${r.id}')">Delete</button>`}</td></tr>`).join('')||`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px;">No returns recorded yet. Open an order and click “Add to Return”.</td></tr>`;
   document.getElementById('pk-body').innerHTML=`
    <div class="att-stat-row" style="margin-bottom:14px;">
@@ -2329,6 +2419,8 @@ function pkRenderReturns(){
      <div class="card"><div class="form-label" style="margin:0 0 6px;">Returns by month</div><canvas id="pk-ret-month"></canvas></div>
      <div class="card"><div class="form-label" style="margin:0 0 6px;">Top customers by returns</div><canvas id="pk-ret-cust"></canvas></div>
    </div>
+   <div class="card" style="margin-bottom:14px;"><div class="card-header"><div><div class="card-title">Repeat-return frequency (day-wise)</div><div class="card-sub">Orders that came back on more than one day — grouped by how many different days they were returned.</div></div></div>
+     <div style="overflow:auto;"><table><thead><tr><th>Frequency</th><th style="text-align:center;">Orders</th><th>Order No (Customer)</th></tr></thead><tbody>${freqRows}</tbody></table></div></div>
    <div class="card"><div class="card-header"><div><div class="card-title">Returned orders</div><div class="card-sub">Each “Add to Return” adds one return day; the same order+lines returned again becomes Return-2, Return-3…</div></div>
      <div class="card-actions"><input class="filter-sel" id="pk-ret-search" type="text" value="${attEsc(pkRetCust)}" placeholder="Search customer…" style="min-width:230px;" oninput="pkRetCust=this.value;pkRenderReturns()"/></div></div>
      <div style="overflow:auto;"><table><thead><tr><th>Return</th><th>Date</th><th>Ship to Party</th><th>Order No</th><th>Line Nos</th><th>Road</th><th>Qty</th><th></th></tr></thead><tbody>${tableRows}</tbody></table></div></div>`;
@@ -2580,7 +2672,9 @@ function pkPrintWindow(title, bodyHtml, pageCss, opts){
   const w=window.open('','_blank','width=920,height=720');
   if(!w){ showToast('Please allow pop-ups for this site to print.','err'); return; }
   const who=(typeof currentUser!=='undefined'&&currentUser&&(currentUser.name||currentUser.id))||'';
-  const footer=(opts&&opts.noFooter)?'':'<div class="print-by">Printed by: '+attEsc(who)+'</div>';
+  const _d=new Date(), _p=n=>(''+n).padStart(2,'0');
+  const _now=_p(_d.getDate())+'/'+_p(_d.getMonth()+1)+'/'+_d.getFullYear()+' '+_p(_d.getHours())+':'+_p(_d.getMinutes());
+  const footer=(opts&&opts.noFooter)?'':'<div class="print-by">Printed by: '+attEsc(who)+' &nbsp;·&nbsp; '+_now+'</div>';
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title><style>'
     +'*{box-sizing:border-box;}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:18px;}'
     +'table{border-collapse:collapse;width:100%;margin-top:6px;}th,td{border:1px solid #333;padding:5px 7px;font-size:12px;text-align:left;vertical-align:top;}th{background:#eee;}'
