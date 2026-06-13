@@ -620,9 +620,9 @@ function fmtDate(d){ if(!d)return '—'; const dt=new Date((''+d).slice(0,10)+'T
 // ═══ IN-MEMORY CACHE (filled from cloud) ═══
 let CACHE = { entries:[], users:[], master:null, orders:[], employees:[], attendance:[], _attLoaded:false };
 let editingOrderId=null;
-const COLLECTION_SERVICES=['Internal FCE','Excelsior Courier'];
-const DELIVERY_SERVICES=['Excelsior Courier','Internal Supply Chain Van','FCE (Urgent)'];
-const ORDER_STATUSES=['Requested','Collected','In Development','Delivered'];
+const COLLECTION_SERVICES=['FCE','Excelsior Courier'];
+const DELIVERY_SERVICES=['Excelsior Courier','Supply Chain Van','FCE (Urgent)'];
+const ORDER_STATUSES=['Requested','Returnted','In Development','Delivered'];
 let currentUser=null, editingId=null, approveId=null, activeFCE=null, activeMonthLog='all', activeChartsMonth='all';
 let comboMatches=[], comboHi=-1;
 
