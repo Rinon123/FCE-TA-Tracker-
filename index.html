@@ -2190,7 +2190,7 @@ function pkListFiltered(){
     return true;
   }).sort((a,b)=>(''+b.trip_date).localeCompare(''+a.trip_date)||(a.serial||0)-(b.serial||0));
 }
-function pkListType(t){ return t.kind==='return'?('Return-'+(t.return_no||1)):'Trip'; }
+function pkListType(t){ return t.kind==='return'?('Return-'+(t.return_no||1)):'Reguler'; }
 function pkRenderListRows(){
   const tb=document.getElementById('pk-list-rows'); if(!tb)return;
   const rows=pkListFiltered();
