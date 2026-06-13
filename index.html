@@ -442,7 +442,7 @@ select.form-input option{background:var(--surface2);}
           <button class="btn btn-primary btn-sm" id="order-new-btn" onclick="openOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>New Order Entry</button>
         </div>
       </div>
-      <div class="card" style="overflow:auto;"><table><thead><tr><th style="width:26px;text-align:center;"><input type="checkbox" onclick="toggleAllTicks(this)" title="Select all" style="cursor:pointer;"></th><th style="width:30px;"></th><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Responsibility To</th><th>Delivery Zone</th><th>Req. Time / Delivered</th><th>Status</th><th>DN Download</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
+      <div class="card" style="overflow:auto;"><table><thead><tr><th style="width:26px;text-align:center;"><input type="checkbox" id="ord-tick-all" onclick="toggleAllTicks(this)" title="Select all" style="cursor:pointer;"></th><th style="width:30px;"></th><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Responsibility To</th><th>Delivery Zone</th><th>Req. Time / Delivered</th><th>Status</th><th>DN Download</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
     </div>
 
     <!-- SAMPLE PACKING -->
@@ -1180,17 +1180,30 @@ function renderUsers(){
   if(!isAdmin())return;
   const q=((document.getElementById('user-search')||{}).value||'').toLowerCase().trim();
   let users=getUsers(); if(q)users=users.filter(u=>(u.name||'').toLowerCase().includes(q)||(u.id||'').toLowerCase().includes(q));
-  const rc={admin:'#7c6af5',authorizer:'#4ecdc4',fce:'#f5a623',logistics:'#37c2d6',teamleader:'#52c87a'}, rl={admin:'Super Admin',authorizer:'Authorizer',fce:'FCE User',logistics:'Logistics',teamleader:'Team Leader'};
+  const rc={admin:'#7c6af5',authorizer:'#4ecdc4',fce:'#f5a623',logistics:'#37c2d6',teamleader:'#52c87a',packer:'#e0892b'}, rl={admin:'Super Admin',authorizer:'Authorizer',fce:'FCE User',logistics:'Logistics',teamleader:'Team Leader',packer:'Packer'};
   document.getElementById('user-list').innerHTML=users.map(u=>{
     const col=rc[u.role]||'#8aa2c4', lbl=rl[u.role]||u.role;
-    const head=`<div class="user-row"><div style="display:flex;align-items:center;gap:12px;min-width:0;"><div class="user-avatar" style="background:${col}22;color:${col};">${u.name.charAt(0)}</div><div style="min-width:0;"><div style="font-weight:600;font-size:13px;">${u.name}</div><div style="font-size:11px;color:var(--muted);">ID: ${u.id}${u.fce?' · '+u.fce:''}${u.station?' · '+u.station:''}</div></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="status-badge" style="background:${col}22;color:${col};border:1px solid ${col}44;">${lbl}</span><button class="btn-icon" style="padding:4px 8px;" onclick="toggleAccess('${u.id}')" title="Page access"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button><button class="btn-icon" style="padding:4px 8px;" onclick="resetPassword('${u.id}')" title="Reset password"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/></svg></button>${u.id!==currentUser.id?`<button class="btn-icon" style="padding:4px 8px;color:var(--red);" onclick="removeUser('${u.id}')" title="Remove"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`:'<span style="font-size:11px;color:var(--muted);">you</span>'}</div></div>`;
+    const head=`<div class="user-row"><div style="display:flex;align-items:center;gap:12px;min-width:0;"><div class="user-avatar" style="background:${col}22;color:${col};">${u.name.charAt(0)}</div><div style="min-width:0;"><div style="font-weight:600;font-size:13px;">${u.name}</div><div style="font-size:11px;color:var(--muted);">ID: ${u.id}${u.fce?' · '+u.fce:''}${u.station?' · '+u.station:''}</div></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="status-badge" style="background:${col}22;color:${col};border:1px solid ${col}44;">${lbl}</span><button class="btn-icon" style="padding:4px 8px;" onclick="toggleUEdit('${u.id}')" title="Edit name / role / station"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button><button class="btn-icon" style="padding:4px 8px;" onclick="toggleAccess('${u.id}')" title="Page access"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button><button class="btn-icon" style="padding:4px 8px;" onclick="resetPassword('${u.id}')" title="Reset password"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/></svg></button>${u.id!==currentUser.id?`<button class="btn-icon" style="padding:4px 8px;color:var(--red);" onclick="removeUser('${u.id}')" title="Remove"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`:'<span style="font-size:11px;color:var(--muted);">you</span>'}</div></div>`;
+    const roleOpts=[['fce','FCE User'],['teamleader','Team Leader'],['authorizer','Authorizer'],['logistics','Logistics'],['packer','Packer'],['admin','Super Admin']].map(([v,l])=>`<option value="${v}" ${u.role===v?'selected':''}>${l}</option>`).join('');
+    const fceOpts=['<option value="">— none —</option>'].concat((getMaster().fce||[]).map(f=>`<option ${u.fce===f?'selected':''}>${attEsc(f)}</option>`)).join('');
+    const epanel=`<div id="uedit-${u.id}" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin:-4px 0 10px;"><div class="form-grid"><div class="form-group"><label class="form-label">Display Name</label><input class="form-input" id="ue-name-${u.id}" value="${attEsc(u.name||'')}"/></div><div class="form-group"><label class="form-label">Role</label><select class="form-input" id="ue-role-${u.id}">${roleOpts}</select></div><div class="form-group"><label class="form-label">Job Station / Location</label><input class="form-input" id="ue-station-${u.id}" value="${attEsc(u.station||'')}" placeholder="e.g. Rajendrapur"/></div><div class="form-group"><label class="form-label">Link to FCE name <span style="text-transform:none;color:var(--dim);">(optional)</span></label><select class="form-input" id="ue-fce-${u.id}">${fceOpts}</select></div></div><div style="margin-top:6px;"><button class="btn btn-primary btn-sm" onclick="saveUserEdit('${u.id}')">Save changes</button> <button class="btn btn-ghost btn-sm" onclick="toggleUEdit('${u.id}')">Close</button></div></div>`;
     const allowed=allowedPagesFor(u);
     const checks=NAV_ITEMS.map(it=>`<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;margin:3px 10px 3px 0;cursor:pointer;"><input type="checkbox" data-uid="${u.id}" value="${it.id}" ${allowed.includes(it.id)?'checked':''}/> ${it.label}</label>`).join('');
     const panel=`<div id="access-${u.id}" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin:-4px 0 10px;"><div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Tick the pages this user can access, then Save:</div>${checks}<div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="saveAccess('${u.id}')">Save access</button> <button class="btn btn-ghost btn-sm" onclick="toggleAccess('${u.id}')">Close</button></div></div>`;
-    return head+panel;
+    return head+epanel+panel;
   }).join('')||'<div style="color:var(--muted);font-size:13px;padding:8px 0;">No matching users.</div>';
 }
 function toggleAccess(id){ const el=document.getElementById('access-'+id); if(el) el.style.display=el.style.display==='none'?'block':'none'; }
+function toggleUEdit(id){ const el=document.getElementById('uedit-'+id); if(el) el.style.display=el.style.display==='none'?'block':'none'; }
+async function saveUserEdit(id){
+  if(!isAdmin()){ showToast('Only Super Admin can edit users.','err'); return; }
+  const name=((document.getElementById('ue-name-'+id)||{}).value||'').trim();
+  const role=(document.getElementById('ue-role-'+id)||{}).value||'';
+  const station=((document.getElementById('ue-station-'+id)||{}).value||'').trim();
+  const fce=(document.getElementById('ue-fce-'+id)||{}).value||'';
+  if(!name){ showToast('Display name cannot be empty.','err'); return; }
+  try{ const {error}=await sb.from('app_users').update({name,role,station:station||null,fce:fce||null}).eq('id',id); if(error)throw error; await refreshAll(); showToast('Updated '+name+'.'); }catch(e){ showToast('Failed: '+e.message,'err'); }
+}
 async function saveAccess(id){
   const boxes=document.querySelectorAll('input[data-uid="'+id+'"]');
   const pages=[...boxes].filter(b=>b.checked).map(b=>b.value);
@@ -1384,6 +1397,7 @@ function renderOrders(){
   visibleOrders=rows;
   document.getElementById('order-count').textContent=rows.length+' orders';
   const canEdit=canEditOrders();
+  const canSend=canSendOrders();
   document.getElementById('orders-table').innerHTML=rows.map(o=>{
     const d=fmtDate(o.date);
     const extra = o.task==='Sample Delivery'
@@ -1400,11 +1414,12 @@ function renderOrders(){
       ['Remarks',o.remarks]
     ].filter(x=>x[1]);
     const detail=`<tr id="detail-${o.id}" style="display:none;background:var(--surface2);"><td colspan="2"></td><td colspan="12" style="padding:12px 14px;"><div style="display:flex;flex-wrap:wrap;gap:8px 28px;">${detailItems.length?detailItems.map(([k,v])=>`<div style="min-width:120px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:'DM Mono',monospace;">${k}</div><div style="font-size:13px;color:var(--text);margin-top:2px;">${v}</div></div>`).join(''):'<span style="font-size:12px;color:var(--muted);">No extra details.</span>'}</div></td></tr>`;
-    return `<tr><td style="text-align:center;"><input type="checkbox" class="ord-tick" value="${o.id}" onclick="event.stopPropagation()" style="cursor:pointer;" title="Select for combined send"></td><td>${chevron}</td><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${o.orderNo||'—'}</td><td style="font-size:12px;">${o.task||'—'}</td><td style="font-size:12px;">${o.customer||'—'}</td><td style="font-size:12px;">${o.buyer||'—'}</td><td style="font-size:12px;">${o.service||'—'}</td><td style="font-size:12px;">${o.fce||'—'}</td><td style="font-size:12px;">${o.to||'—'}</td><td style="font-size:12px;color:var(--muted);">${extra}</td><td>${orderStatusBadge(o.status)}</td><td>${note}</td><td><div style="display:flex;gap:4px;align-items:center;">${sendBtn}${editBtn}</div></td></tr>${detail}`;
+    return `<tr><td style="text-align:center;">${canSend?`<input type="checkbox" class="ord-tick" value="${o.id}" onclick="event.stopPropagation()" style="cursor:pointer;" title="Select for combined send">`:''}</td><td>${chevron}</td><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${o.orderNo||'—'}</td><td style="font-size:12px;">${o.task||'—'}</td><td style="font-size:12px;">${o.customer||'—'}</td><td style="font-size:12px;">${o.buyer||'—'}</td><td style="font-size:12px;">${o.service||'—'}</td><td style="font-size:12px;">${o.fce||'—'}</td><td style="font-size:12px;">${o.to||'—'}</td><td style="font-size:12px;color:var(--muted);">${extra}</td><td>${orderStatusBadge(o.status)}</td><td>${note}</td><td><div style="display:flex;gap:4px;align-items:center;">${sendBtn}${editBtn}</div></td></tr>${detail}`;
   }).join('')||'<tr><td colspan="14" style="text-align:center;color:var(--muted);padding:24px;">No orders yet</td></tr>';
   // Hide the New Order button for view-only users
   const newBtn=document.getElementById('order-new-btn'); if(newBtn) newBtn.style.display=canEdit?'':'none';
-  const csBtn=document.getElementById('order-csend-btn'); if(csBtn) csBtn.style.display=canSendOrders()?'':'none';
+  const csBtn=document.getElementById('order-csend-btn'); if(csBtn) csBtn.style.display=canSend?'':'none';
+  const tickAll=document.getElementById('ord-tick-all'); if(tickAll) tickAll.style.display=canSend?'':'none';
 }
 function canEditOrders(){
   if(!canSee('orders')) return false;
