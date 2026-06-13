@@ -370,7 +370,7 @@ select.form-input option{background:var(--surface2);}
             <div class="form-group"><label class="form-label">Duration</label><input class="form-input" type="text" id="f-duration" placeholder="e.g. 9:00AM–5:00PM"/></div>
             <div class="form-group full" id="f-purpose-custom-wrap" style="display:none;"><label class="form-label">Custom purpose description *</label><textarea class="form-input" id="f-purpose-custom" placeholder="Describe the visit purpose…"></textarea></div>
             <div class="form-group"><label class="form-label">Claimed Amount (৳) *</label><input class="form-input" type="number" id="f-ta" placeholder="e.g. 500" min="0" step="50"/></div>
-            <div class="form-group"><label class="form-label">Order Number (optional)</label><input class="form-input" type="text" id="f-order" placeholder="e.g. PS40294323"/></div>
+            <div class="form-group"><label class="form-label">Order Number (optional)</label><input class="form-input" type="text" id="f-order" placeholder="e.g. RS40294323"/></div>
             <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-input" id="f-notes" placeholder="Any additional notes…" style="min-height:52px;"></textarea></div>
           </div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -543,7 +543,7 @@ select.form-input option{background:var(--surface2);}
          <div class="form-group o-delivery"><label class="form-label">Delivery Date</label><input class="form-input" type="date" id="o-delivered"/></div>
          <div class="form-group full o-delivery"><label class="form-label">Delivery note (PDF / image)</label><input class="form-input" type="file" id="o-file" accept=".pdf,.jpg,.jpeg,.png" style="padding:7px;"/><div id="o-file-current" style="font-size:11px;color:var(--muted);margin-top:4px;"></div></div>
          <div class="form-group"><label class="form-label">Delivery Zone <span style="text-transform:none;color:var(--dim);">(road)</span></label><select class="form-input" id="o-zone" onchange="onZoneSelect(this)"></select></div>
-         <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="o-status" onchange="onOrderStatusChange()"><option>Requested</option><option>Collected</option><option>In Development</option><option>Delivered</option></select></div>
+         <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="o-status" onchange="onOrderStatusChange()"><option>Requested</option><option>Returned</option><option>In Development</option><option>Delivered</option></select></div>
          <div class="form-group full"><label class="form-label">Remarks</label><textarea class="form-input" id="o-remarks" style="min-height:48px;"></textarea></div>
        </div>
        <div id="o-manual-back" style="margin-top:10px;font-size:12px;color:var(--muted);">Adding many? <a href="javascript:void(0)" onclick="oToggleManual(false)" style="color:var(--accent2,#52c87a);">Upload a file instead</a></div>
