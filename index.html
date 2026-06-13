@@ -434,12 +434,15 @@ select.form-input option{background:var(--surface2);}
           <input class="filter-sel" type="text" id="order-no-filter" placeholder="Filter by Order No…" oninput="renderOrders()" style="width:160px;"/>
           <select class="filter-sel" id="order-task-filter" onchange="renderOrders()"><option value="">All tasks</option><option>Swatch Collection</option><option>Sample Delivery</option></select>
           <select class="filter-sel" id="order-zone-filter" onchange="renderOrders()"><option value="">All zones</option></select>
+          <input class="filter-sel" type="text" id="order-resp-filter" list="order-resp-list" placeholder="Responsibility to…" oninput="renderOrders()" style="width:165px;"/>
+          <datalist id="order-resp-list"></datalist>
           <span class="count-badge" id="order-count">—</span>
+          <button class="btn btn-ghost btn-sm" id="order-csend-btn" onclick="openCombinedSendModal()" title="Send one combined message per assigned person"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send combined</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadOrders()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download CSV</button>
           <button class="btn btn-primary btn-sm" id="order-new-btn" onclick="openOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>New Order Entry</button>
         </div>
       </div>
-      <div class="card" style="overflow:auto;"><table><thead><tr><th style="width:30px;"></th><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Req. Time / Delivered</th><th>Status</th><th>DN Download</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
+      <div class="card" style="overflow:auto;"><table><thead><tr><th style="width:26px;text-align:center;"><input type="checkbox" onclick="toggleAllTicks(this)" title="Select all" style="cursor:pointer;"></th><th style="width:30px;"></th><th>Date</th><th>Order No</th><th>Task</th><th>Customer</th><th>Buyer</th><th>Service By</th><th>Responsibility To</th><th>Delivery Zone</th><th>Req. Time / Delivered</th><th>Status</th><th>DN Download</th><th>Actions</th></tr></thead><tbody id="orders-table"></tbody></table></div>
     </div>
 
     <!-- SAMPLE PACKING -->
@@ -460,7 +463,7 @@ select.form-input option{background:var(--surface2);}
       <div class="att-tabs">
         <button class="att-tab active" data-att="mark" onclick="attSwitch('mark',this)">Mark Attendance</button>
         <button class="att-tab" data-att="dash" onclick="attSwitch('dash',this)">Dashboard</button>
-        <button class="att-tab" data-att="emps" onclick="attSwitch('emps',this)">Employees Name</button>
+        <button class="att-tab" id="att-tab-emps" data-att="emps" onclick="attSwitch('emps',this)">Employees Name</button>
       </div>
       <div id="att-body"></div>
     </div>
@@ -1102,7 +1105,57 @@ function openSendModal(id){
     ${(!phone&&!email)?`<div style="margin-top:11px;font-size:12px;color:var(--amber,#e0892b);">No contact saved for “${attEsc(party||'this party')}”. Add it in <b>Master Data → FCE Mobile Numbers / Courier Emails</b>.</div>`:''}`;
   document.getElementById('send-modal').classList.add('open');
 }
-function masterKey(t){ return t==='fce'?'fce':t==='customer'?'customers':t==='purpose'?'purposes':t==='buyer'?'buyers':'reasons'; }
+// ---- Combined send: one message per assigned person, covering all listed orders ----
+let __csend={};
+function sendLinkBtn(href,label,primary){ return `<a class="btn ${primary?'btn-primary':'btn-ghost'} btn-sm" ${href?`href="${href}" target="_blank" rel="noopener"`:''} style="text-decoration:none;${href?'':'opacity:.4;pointer-events:none;'}">${label}</a>`; }
+function oCopyCombined(i){ try{ if(navigator.clipboard)navigator.clipboard.writeText(__csend[i]||''); showToast('Combined message copied.'); }catch(e){ showToast('Copy not available.','err'); } }
+function combinedMsg(party,list){
+  const L=['Sample requirements — '+list.length+' order(s) for '+party,''];
+  list.forEach((o,i)=>{
+    const parts=[(i+1)+') '+(o.orderNo||'(no order no)')];
+    if(o.task)parts.push(o.task);
+    if(o.customer)parts.push(o.customer);
+    if(o.to)parts.push('Zone: '+o.to);
+    if(o.task==='Sample Delivery'){ if(o.deliveredAt)parts.push('Delivered '+fmtDate(o.deliveredAt)); }
+    else if(o.reqTime)parts.push('Req. '+o.reqTime);
+    if(o.status)parts.push(o.status);
+    L.push(parts.join(' · '));
+  });
+  return L.join('\n');
+}
+function toggleAllTicks(master){ document.querySelectorAll('#orders-table .ord-tick').forEach(c=>{ c.checked=master.checked; }); }
+function openCombinedSendModal(){
+  if(!canSendOrders()){ showToast('You don\'t have access to send requirements.','err'); return; }
+  const ticked=[...document.querySelectorAll('#orders-table .ord-tick:checked')].map(c=>c.value);
+  const pool = ticked.length ? (visibleOrders||[]).filter(o=>ticked.includes(o.id)) : (visibleOrders||[]);
+  const groups={};
+  pool.forEach(o=>{ const party=orderResponsible(o); if(!party)return; (groups[party]=groups[party]||[]).push(o); });
+  const parties=Object.keys(groups).sort((a,b)=>a.localeCompare(b));
+  if(!parties.length){ showToast('No orders selected. Tick the rows to send (or clear ticks to send all listed).','err'); return; }
+  __csend={}; const c=getContacts();
+  const scopeNote = ticked.length ? `${pool.length} selected order(s)` : `all ${pool.length} listed order(s)`;
+  let html=`<div style="font-size:13px;color:var(--muted);margin-bottom:12px;">One combined message per assigned person, covering ${scopeNote}. Tip: tick the rows for a person (e.g. Torikul's 3) — or filter by <b>Responsibility&nbsp;to</b> — then send.</div>`;
+  parties.forEach((party,idx)=>{
+    const list=groups[party];
+    const phone=(c.fce&&c.fce[party])||''; const email=(c.courier&&c.courier[party])||'';
+    const msg=combinedMsg(party,list); __csend[idx]=msg;
+    const wa=phone?`https://wa.me/${intlPhone(phone)}?text=${encodeURIComponent(msg)}`:'';
+    const sms=phone?`sms:+${intlPhone(phone)}?body=${encodeURIComponent(msg)}`:'';
+    const mail=email?`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Sample requirements ('+list.length+' orders)')}&body=${encodeURIComponent(msg)}`:'';
+    html+=`<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:700;color:var(--text);">${attEsc(party)} <span style="color:var(--muted);font-weight:400;">· ${list.length} order(s)</span></div>
+      ${(phone||email)?`<div style="font-size:11px;color:var(--muted);margin-top:2px;" class="mono">${attEsc(phone||'')}${(phone&&email)?' · ':''}${attEsc(email||'')}</div>`:''}
+      <div style="background:var(--surface2,#171726);border:1px solid var(--border);border-radius:8px;padding:10px;white-space:pre-wrap;font-size:12px;color:var(--text);max-height:150px;overflow:auto;margin-top:8px;">${attEsc(msg)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+        ${sendLinkBtn(wa,'WhatsApp',true)}${sendLinkBtn(sms,'SMS',false)}${sendLinkBtn(mail,'Email',false)}
+        <button class="btn btn-ghost btn-sm" onclick="oCopyCombined(${idx})">Copy text</button>
+      </div>
+      ${(!phone&&!email)?`<div style="margin-top:9px;font-size:11.5px;color:var(--amber,#e0892b);">No contact saved for “${attEsc(party)}” — add it in Master Data → FCE Mobile Numbers / Courier Emails.</div>`:''}
+    </div>`;
+  });
+  document.getElementById('send-modal-body').innerHTML=html;
+  document.getElementById('send-modal').classList.add('open');
+}
 async function addMasterItem(type){
   const val=document.getElementById('new-'+type+'-input').value.trim(); if(!val){ showToast('Enter a name first.','err'); return; }
   const m=getMaster(); const key=masterKey(type); if(m[key].includes(val)){ showToast('Already exists.','err'); return; }
@@ -1315,12 +1368,15 @@ function renderOrders(){
   buildOrderStatusBar();
   const taskF=document.getElementById('order-task-filter').value;
   const zoneF=(document.getElementById('order-zone-filter')||{}).value||'';
+  const respF=((document.getElementById('order-resp-filter')||{}).value||'').toLowerCase().trim();
   const noF=(document.getElementById('order-no-filter').value||'').toLowerCase().trim();
   const srch=document.getElementById('global-search').value.toLowerCase();
+  { const dl=document.getElementById('order-resp-list'); if(dl){ const names=[...new Set(scopedOrders().map(o=>o.fce).filter(Boolean))].sort((a,b)=>(''+a).localeCompare(''+b)); dl.innerHTML=names.map(n=>`<option value="${attEsc(n)}"></option>`).join(''); } }
   let rows=scopedOrders().filter(o=>{
     if(activeOrderStatus!=='all'&&o.status!==activeOrderStatus)return false;
     if(taskF&&o.task!==taskF)return false;
     if(zoneF&&(o.to||'')!==zoneF)return false;
+    if(respF&&!((o.fce||'').toLowerCase().includes(respF)))return false;
     if(noF&&!(o.orderNo||'').toLowerCase().includes(noF))return false;
     if(srch&&!(o.customer||'').toLowerCase().includes(srch)&&!(o.buyer||'').toLowerCase().includes(srch)&&!(o.orderNo||'').toLowerCase().includes(srch)&&!(o.fce||'').toLowerCase().includes(srch))return false;
     return true;
@@ -1338,18 +1394,17 @@ function renderOrders(){
     const sendBtn=canSendOrders()?`<button class="btn-icon btn-sm" onclick="openSendModal('${o.id}')" title="Send requirement (SMS / WhatsApp / Email)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>`:'';
     const chevron=`<button class="btn-icon btn-sm" onclick="toggleOrderRow('${o.id}')" title="Show details" id="chev-${o.id}" style="transition:transform .15s;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>`;
     const detailItems=[
-      ['Responsibility To',o.fce],
-      ['Delivery Zone',o.to],
       ['Requested Time',o.reqTime],
       ['Delivery Date',o.deliveredAt?fmtDate(o.deliveredAt):''],
       ['Created by',o.createdBy],
       ['Remarks',o.remarks]
     ].filter(x=>x[1]);
-    const detail=`<tr id="detail-${o.id}" style="display:none;background:var(--surface2);"><td></td><td colspan="10" style="padding:12px 14px;"><div style="display:flex;flex-wrap:wrap;gap:8px 28px;">${detailItems.length?detailItems.map(([k,v])=>`<div style="min-width:120px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:'DM Mono',monospace;">${k}</div><div style="font-size:13px;color:var(--text);margin-top:2px;">${v}</div></div>`).join(''):'<span style="font-size:12px;color:var(--muted);">No extra details.</span>'}</div></td></tr>`;
-    return `<tr><td>${chevron}</td><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${o.orderNo||'—'}</td><td style="font-size:12px;">${o.task||'—'}</td><td style="font-size:12px;">${o.customer||'—'}</td><td style="font-size:12px;">${o.buyer||'—'}</td><td style="font-size:12px;">${o.service||'—'}</td><td style="font-size:12px;color:var(--muted);">${extra}</td><td>${orderStatusBadge(o.status)}</td><td>${note}</td><td><div style="display:flex;gap:4px;align-items:center;">${sendBtn}${editBtn}</div></td></tr>${detail}`;
-  }).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:24px;">No orders yet</td></tr>';
+    const detail=`<tr id="detail-${o.id}" style="display:none;background:var(--surface2);"><td colspan="2"></td><td colspan="12" style="padding:12px 14px;"><div style="display:flex;flex-wrap:wrap;gap:8px 28px;">${detailItems.length?detailItems.map(([k,v])=>`<div style="min-width:120px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:'DM Mono',monospace;">${k}</div><div style="font-size:13px;color:var(--text);margin-top:2px;">${v}</div></div>`).join(''):'<span style="font-size:12px;color:var(--muted);">No extra details.</span>'}</div></td></tr>`;
+    return `<tr><td style="text-align:center;"><input type="checkbox" class="ord-tick" value="${o.id}" onclick="event.stopPropagation()" style="cursor:pointer;" title="Select for combined send"></td><td>${chevron}</td><td class="mono" style="color:var(--muted);white-space:nowrap;">${d}</td><td style="font-size:12px;">${o.orderNo||'—'}</td><td style="font-size:12px;">${o.task||'—'}</td><td style="font-size:12px;">${o.customer||'—'}</td><td style="font-size:12px;">${o.buyer||'—'}</td><td style="font-size:12px;">${o.service||'—'}</td><td style="font-size:12px;">${o.fce||'—'}</td><td style="font-size:12px;">${o.to||'—'}</td><td style="font-size:12px;color:var(--muted);">${extra}</td><td>${orderStatusBadge(o.status)}</td><td>${note}</td><td><div style="display:flex;gap:4px;align-items:center;">${sendBtn}${editBtn}</div></td></tr>${detail}`;
+  }).join('')||'<tr><td colspan="14" style="text-align:center;color:var(--muted);padding:24px;">No orders yet</td></tr>';
   // Hide the New Order button for view-only users
   const newBtn=document.getElementById('order-new-btn'); if(newBtn) newBtn.style.display=canEdit?'':'none';
+  const csBtn=document.getElementById('order-csend-btn'); if(csBtn) csBtn.style.display=canSendOrders()?'':'none';
 }
 function canEditOrders(){
   if(!canSee('orders')) return false;
@@ -1630,6 +1685,8 @@ async function attLoad(force){
 function attSwitch(tab,btn){attTab=tab;document.querySelectorAll('#page-attendance .att-tab').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');attRender();}
 async function attRender(){
   await attLoad();
+  const empsBtn=document.getElementById('att-tab-emps'); if(empsBtn)empsBtn.style.display=isAdmin()?'':'none';
+  if(attTab==='emps'&&!isAdmin())attTab='mark'; // Employees Name is Super Admin only
   document.querySelectorAll('#page-attendance .att-tab').forEach(b=>b.classList.toggle('active',b.getAttribute('data-att')===attTab));
   if(attTab==='mark')attRenderMark(); else if(attTab==='dash')attRenderDash(); else attRenderEmps();
 }
